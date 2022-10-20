@@ -180,6 +180,8 @@ public:
         _enable_persistent_index = enable_persistent_index;
     }
 
+    std::string get_store_type() const { return _store_type; }
+
 private:
     int64_t _mem_usage() const { return sizeof(TabletMeta); }
 
@@ -197,6 +199,7 @@ private:
     int64_t _creation_time = 0;
     int64_t _cumulative_layer_point = 0;
     bool _enable_persistent_index = false;
+    string _store_type;
     TabletUid _tablet_uid;
     TabletTypePB _tablet_type = TabletTypePB::TABLET_TYPE_DISK;
 

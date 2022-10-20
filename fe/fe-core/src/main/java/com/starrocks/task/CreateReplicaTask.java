@@ -27,6 +27,7 @@ import com.starrocks.catalog.Index;
 import com.starrocks.catalog.KeysType;
 import com.starrocks.common.MarkedCountDownLatch;
 import com.starrocks.common.Status;
+import com.starrocks.common.util.PropertyAnalyzer;
 import com.starrocks.thrift.TColumn;
 import com.starrocks.thrift.TCompressionType;
 import com.starrocks.thrift.TCreateTabletReq;
@@ -72,6 +73,8 @@ public class CreateReplicaTask extends AgentTask {
     private boolean isInMemory;
 
     private boolean enablePersistentIndex;
+
+    private String storeType = PropertyAnalyzer.PROPERTIES_STORE_TYPE_COLUMN;
 
     private TTabletType tabletType;
 
@@ -137,6 +140,10 @@ public class CreateReplicaTask extends AgentTask {
         this.tabletType = tabletType;
 
         this.compressionType = compressionType;
+    }
+
+    public void setStoreType(String storeType) {
+        this.storeType = storeType;
     }
 
     public void setIsRecoverTask(boolean isRecoverTask) {
@@ -231,6 +238,7 @@ public class CreateReplicaTask extends AgentTask {
 
         createTabletReq.setStorage_medium(storageMedium);
         createTabletReq.setEnable_persistent_index(enablePersistentIndex);
+        createTabletReq.setStore_type(storeType);
         if (inRestoreMode) {
             createTabletReq.setIn_restore_mode(true);
         }

@@ -1634,6 +1634,13 @@ public class OlapTable extends Table implements GsonPostProcessable {
         return false;
     }
 
+    public String storeType() {
+        if (tableProperty != null) {
+            return tableProperty.storeType();
+        }
+        return PropertyAnalyzer.PROPERTIES_STORE_TYPE_COLUMN;
+    }
+
     public void setEnablePersistentIndex(boolean enablePersistentIndex) {
         if (tableProperty == null) {
             tableProperty = new TableProperty(new HashMap<>());
@@ -1642,6 +1649,16 @@ public class OlapTable extends Table implements GsonPostProcessable {
                 .modifyTableProperties(PropertyAnalyzer.PROPERTIES_ENABLE_PERSISTENT_INDEX,
                         Boolean.valueOf(enablePersistentIndex).toString());
         tableProperty.buildEnablePersistentIndex();
+    }
+
+    public void setStoreType(String storeType) {
+        if (tableProperty == null) {
+            tableProperty = new TableProperty(new HashMap<>());
+        }
+        if (storeType == null) {
+            storeType = PropertyAnalyzer.PROPERTIES_STORE_TYPE_COLUMN;
+        }
+        tableProperty.modifyTableProperties(PropertyAnalyzer.PROPERTIES_STORE_TYPE, storeType);
     }
 
     public TWriteQuorumType writeQuorum() {
@@ -1881,7 +1898,6 @@ public class OlapTable extends Table implements GsonPostProcessable {
         }
         return tableProperty.getCompressionType();
     }
-
 
     @Override
     public void onCreate() {

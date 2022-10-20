@@ -251,6 +251,8 @@ public:
         return _tablet_meta->set_enable_persistent_index(enable_persistent_index);
     }
 
+    std::string get_store_type() const { return _tablet_meta->get_store_type(); }
+
     Status contains_version(const Version& version);
 
 protected:

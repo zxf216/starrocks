@@ -538,7 +538,6 @@ public class LocalMetastore implements ConnectorMetadata {
                 }
             }
 
-
             // log
             RecoverInfo recoverInfo = new RecoverInfo(db.getId(), -1L, -1L);
             editLog.logRecoverDb(recoverInfo);
@@ -1784,7 +1783,7 @@ public class LocalMetastore implements ConnectorMetadata {
                 } catch (UserException e) {
                     throw new DdlException(e.getMessage());
                 }
-                
+
                 CreateReplicaTask task = new CreateReplicaTask(
                         primaryBackendId,
                         dbId,
@@ -1807,6 +1806,7 @@ public class LocalMetastore implements ConnectorMetadata {
                         table.enablePersistentIndex(),
                         TTabletType.TABLET_TYPE_LAKE,
                         table.getCompressionType(), indexMeta.getSortKeyIdxes());
+                task.setStoreType(table.storeType());
                 tasks.add(task);
             } else {
                 for (Replica replica : ((LocalTablet) tablet).getImmutableReplicas()) {
@@ -1832,6 +1832,7 @@ public class LocalMetastore implements ConnectorMetadata {
                             table.enablePersistentIndex(),
                             table.getPartitionInfo().getTabletType(partition.getId()),
                             table.getCompressionType(), indexMeta.getSortKeyIdxes());
+                    task.setStoreType(table.storeType());
                     tasks.add(task);
                 }
             }
@@ -2115,6 +2116,8 @@ public class LocalMetastore implements ConnectorMetadata {
                 PropertyAnalyzer.analyzeBooleanProp(properties, PropertyAnalyzer.PROPERTIES_ENABLE_PERSISTENT_INDEX,
                         false);
         olapTable.setEnablePersistentIndex(enablePersistentIndex);
+
+        olapTable.setStoreType(properties.get(PropertyAnalyzer.PROPERTIES_STORE_TYPE));
 
         // write quorum
         try {

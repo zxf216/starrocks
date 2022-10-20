@@ -88,6 +88,12 @@ public class PropertyAnalyzer {
 
     public static final String PROPERTIES_ENABLE_PERSISTENT_INDEX = "enable_persistent_index";
 
+    public static final String PROPERTIES_STORE_TYPE = "store_type";
+    public static final String PROPERTIES_STORE_TYPE_COLUMN = "column";
+    public static final String PROPERTIES_STORE_TYPE_COLUMN_WITH_ROW = "column_with_row";
+    public static final String PROPERTIES_STORE_TYPE_ROW = "row";
+    public static final String PROPERTIES_STORE_TYPE_ROW_MVCC = "row_mvcc";
+
     public static final String PROPERTIES_WRITE_QUORUM = "write_quorum";
 
     public static final String PROPERTIES_TABLET_TYPE = "tablet_type";
@@ -242,8 +248,8 @@ public class PropertyAnalyzer {
         }
         List<Long> backendIds = GlobalStateMgr.getCurrentSystemInfo().getAvailableBackendIds();
         if (replicationNum > backendIds.size()) {
-            throw new AnalysisException("Replication num should be less than the number of available BE nodes. " 
-            + "Replication num is " + replicationNum + " available BE nodes is " + backendIds.size());
+            throw new AnalysisException("Replication num should be less than the number of available BE nodes. "
+                    + "Replication num is " + replicationNum + " available BE nodes is " + backendIds.size());
         }
     }
 

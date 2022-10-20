@@ -175,6 +175,7 @@ public class TableProperty implements Writable, GsonPostProcessable {
                         WriteQuorum.MAJORITY));
         return this;
     }
+
     public TableProperty buildEnablePersistentIndex() {
         enablePersistentIndex = Boolean.parseBoolean(
                 properties.getOrDefault(PropertyAnalyzer.PROPERTIES_ENABLE_PERSISTENT_INDEX, "false"));
@@ -215,6 +216,10 @@ public class TableProperty implements Writable, GsonPostProcessable {
 
     public boolean enablePersistentIndex() {
         return enablePersistentIndex;
+    }
+
+    public String storeType() {
+        return properties.get(PropertyAnalyzer.PROPERTIES_STORAGE_TYPE);
     }
 
     public TWriteQuorumType writeQuorum() {

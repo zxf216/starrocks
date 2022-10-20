@@ -200,6 +200,11 @@ void TabletMeta::init_from_pb(TabletMetaPB* ptablet_meta_pb) {
         _enable_persistent_index = false;
     }
 
+    _store_type = "column";
+    if (tablet_meta_pb.has_store_type() && !tablet_meta_pb.store_type().empty()) {
+        _store_type = tablet_meta_pb.store_type();
+    }
+
     // init _tablet_state
     switch (tablet_meta_pb.tablet_state()) {
     case PB_NOTREADY:
@@ -260,6 +265,9 @@ void TabletMeta::to_meta_pb(TabletMetaPB* tablet_meta_pb) {
     tablet_meta_pb->set_creation_time(creation_time());
     tablet_meta_pb->set_cumulative_layer_point(cumulative_layer_point());
     tablet_meta_pb->set_enable_persistent_index(get_enable_persistent_index());
+    if (!_store_type.empty()) {
+        tablet_meta_pb->set_store_type(_store_type);
+    }
     *tablet_meta_pb->mutable_tablet_uid() = tablet_uid().to_proto();
     tablet_meta_pb->set_tablet_type(_tablet_type);
     switch (tablet_state()) {
