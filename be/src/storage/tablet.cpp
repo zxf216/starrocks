@@ -40,6 +40,7 @@
 #include "storage/compaction_task.h"
 #include "storage/olap_common.h"
 #include "storage/olap_define.h"
+#include "storage/row_store.h"
 #include "storage/rowset/rowset_factory.h"
 #include "storage/rowset/rowset_meta_manager.h"
 #include "storage/storage_engine.h"
@@ -111,6 +112,21 @@ Status Tablet::_init_once_action() {
             }
         }
         _inc_rs_version_map[version] = std::move(rowset);
+    }
+
+    if (get_store_type() == "row") {
+        auto st = _init_rowstore(false);
+        if (!st.ok()) {
+            LOG(WARNING) << "fail to init rowstore. tablet_id:" << tablet_id();
+            return st;
+        }
+    }
+    if (get_store_type() == "row_mvcc") {
+        auto st = _init_rowstore(true);
+        if (!st.ok()) {
+            LOG(WARNING) << "fail to init rowstore. tablet_id:" << tablet_id();
+            return st;
+        }
     }
 
     return Status::OK();
@@ -1355,6 +1371,20 @@ void Tablet::reset_compaction(CompactionType type) {
 // for ut
 void Tablet::set_compaction_context(std::unique_ptr<CompactionContext>& compaction_context) {
     _compaction_context = std::move(compaction_context);
+}
+
+RowStore* Tablet::row_store() {
+    return _row_store.get();
+}
+
+Status Tablet::_init_rowstore(const bool support_mvcc) {
+    // init row store
+    _row_store = std::make_unique<RowStore>(schema_hash_path() + ROW_STORE_PREFIX);
+    LOG(INFO) << "open rowstore path: " << schema_hash_path() + ROW_STORE_PREFIX;
+
+    Status s = _row_store->init(support_mvcc);
+    LOG_IF(WARNING, !s.ok()) << "Fail to init rowstore: " << schema_hash_path() + ROW_STORE_PREFIX;
+    return s;
 }
 
 } // namespace starrocks

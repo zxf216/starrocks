@@ -42,7 +42,6 @@ namespace starrocks {
 class Tablet;
 class TabletManager;
 class TxnManager;
-class RowStore;
 
 // A DataDir used to manage data in same path.
 // Now, After DataDir was created, it will never be deleted for easy implementation.
@@ -85,8 +84,6 @@ public:
 
     KVStore* get_meta() { return _kv_store; }
 
-    RowStore* get_rowstore() { return _row_store.get(); }
-
     bool is_ssd_disk() const { return _storage_medium == TStorageMedium::SSD; }
 
     TStorageMedium::type storage_medium() const { return _storage_medium; }
@@ -127,7 +124,6 @@ private:
     Status _init_data_dir();
     Status _init_tmp_dir();
     Status _init_meta(bool read_only = false);
-    Status _init_rowstore();
 
     Status _read_and_write_test_file();
 
@@ -163,9 +159,6 @@ private:
     std::condition_variable _cv;
     std::set<std::string> _all_check_paths;
     std::set<std::string> _all_tablet_schemahash_paths;
-
-    // rowstore
-    std::unique_ptr<RowStore> _row_store;
 };
 
 } // namespace starrocks

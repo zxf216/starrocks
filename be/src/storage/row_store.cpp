@@ -28,18 +28,21 @@ RowStore::~RowStore() {
     }
 }
 
-Status RowStore::init() {
+Status RowStore::init(const bool support_mvcc) {
     Options options;
     options.IncreaseParallelism();
     options.create_if_missing = true;
-    options.prefix_extractor.reset(rocksdb::NewCappedPrefixTransform(key_prefix_len_));
-    // Enable prefix bloom for mem tables
-    options.memtable_prefix_bloom_size_ratio = 0.1;
-    // Setup bloom filter
-    rocksdb::BlockBasedTableOptions table_options;
-    table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
-    table_options.whole_key_filtering = false;
-    options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
+    if (support_mvcc) {
+        // use prefix filter
+        options.prefix_extractor.reset(rocksdb::NewCappedPrefixTransform(key_prefix_len_));
+        // Enable prefix bloom for mem tables
+        options.memtable_prefix_bloom_size_ratio = 0.1;
+        // Setup bloom filter
+        rocksdb::BlockBasedTableOptions table_options;
+        table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
+        table_options.whole_key_filtering = false;
+        options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
+    }
 
     // open rocksdb
     rocksdb::Status s = DB::Open(options, _db_path, &_db);
@@ -63,6 +66,32 @@ Status RowStore::batch_put(std::vector<std::string>& keys, const std::vector<std
     write_options.sync = true;
     rocksdb::Status s = _db->Write(write_options, &wb);
     return to_status(s);
+}
+
+Status RowStore::batch_put(const std::vector<std::string>& keys, const std::vector<std::string>& values) {
+    CHECK(keys.size() == values.size()) << "rowstore batch_put invalid kv pairs";
+    rocksdb::WriteBatch wb;
+    for (int i = 0; i < keys.size(); i++) {
+        wb.Put(keys[i], values[i]);
+    }
+    WriteOptions write_options;
+    write_options.sync = true;
+    rocksdb::Status s = _db->Write(write_options, &wb);
+    return to_status(s);
+}
+
+void RowStore::multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values,
+                         std::vector<Status>& rets) {
+    std::vector<rocksdb::Slice> key_slices;
+    key_slices.reserve(keys.size());
+    for (const auto& key : keys) {
+        key_slices.emplace_back(key);
+    }
+    std::vector<rocksdb::Status> ss = _db->MultiGet(rocksdb::ReadOptions(), key_slices, &values, nullptr);
+    rets.reserve(ss.size());
+    for (const auto& s : ss) {
+        rets.push_back(to_status(s));
+    }
 }
 
 } // namespace starrocks

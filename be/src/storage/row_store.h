@@ -28,10 +28,17 @@ public:
 
     virtual ~RowStore();
 
-    Status init();
+    Status init(const bool support_mvcc);
 
+    /// with mvcc
     // write key value pairs to rowstore with version
     Status batch_put(std::vector<std::string>& keys, const std::vector<std::string>& values, int64_t version);
+
+    ///  without mvcc
+    // write key value pairs to rowstore
+    Status batch_put(const std::vector<std::string>& keys, const std::vector<std::string>& values);
+
+    void multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values, std::vector<Status>& rets);
 
 private:
     std::string _db_path;

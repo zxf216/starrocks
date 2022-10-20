@@ -7,13 +7,13 @@
 #include "serde/column_array_serde.h"
 #include "storage/chunk_helper.h"
 #include "storage/primary_key_encoder.h"
+#include "storage/row_store.h"
+#include "storage/row_store_encoder.h"
 #include "storage/rowset/rowset.h"
 #include "storage/rowset/rowset_options.h"
 #include "storage/rowset/segment_rewriter.h"
 #include "storage/tablet.h"
 #include "storage/tablet_meta_manager.h"
-#include "storage/row_store.h"
-#include "storage/row_store_encoder.h"
 #include "util/defer_op.h"
 #include "util/phmap/phmap.h"
 #include "util/stack_util.h"
@@ -432,12 +432,18 @@ std::string RowsetUpdateState::to_string() const {
     return Substitute("RowsetUpdateState tablet:$0", _tablet_id);
 }
 
-Status RowsetUpdateState::apply_to_rowstore(RowStore* rowstore, int64_t version) {
-    /*
+Status RowsetUpdateState::apply_to_rowstore(const std::string& store_type, RowStore* rowstore, int64_t version) {
+    if (store_type != "row" && store_type != "row_mvcc") return Status::OK();
     std::vector<std::string> keys, values;
-    RowStoreEncoder::chunk_to_keys(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0, _rowstore_chunk->num_rows(), keys);
-    RowStoreEncoder::chunk_to_values(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0, _rowstore_chunk->num_rows(), values);
-    rowstore->batch_put(keys, values, version);*/
+    RowStoreEncoder::chunk_to_keys(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0,
+                                   _rowstore_chunk->num_rows(), keys);
+    RowStoreEncoder::chunk_to_values(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0,
+                                     _rowstore_chunk->num_rows(), values);
+    if (store_type == "row") {
+        rowstore->batch_put(keys, values);
+    } else {
+        rowstore->batch_put(keys, values, version);
+    }
     return Status::OK();
 }
 

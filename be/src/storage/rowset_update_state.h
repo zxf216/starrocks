@@ -31,7 +31,7 @@ public:
     Status apply(Tablet* tablet, Rowset* rowset, uint32_t rowset_id, EditVersion latest_applied_version,
                  const PrimaryIndex& index);
 
-    Status apply_to_rowstore(RowStore* rowstore, int64_t version);
+    Status apply_to_rowstore(const std::string& store_type, RowStore* rowstore, int64_t version);
 
     const std::vector<ColumnUniquePtr>& upserts() const { return _upserts; }
     const std::vector<ColumnUniquePtr>& deletes() const { return _deletes; }
