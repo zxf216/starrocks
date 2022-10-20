@@ -366,4 +366,23 @@ Status RowStoreEncoder::kvs_to_chunk(const std::vector<std::string>& keys, const
     return Status::OK();
 }
 
+void RowStoreEncoder::combine_key_with_ver(std::string& key, const int8_t op, const int64_t version) {
+    uint32_t key_len = key.length();
+    encode_integral(encode_version(op, version), &key);
+    encode_integral(key_len, &key);
+}
+
+Status RowStoreEncoder::split_key_with_ver(const std::string& ckey, std::string& key, int8_t& op, int64_t& version) {
+    Slice len_slice = Slice(ckey.data() + ckey.length() - 4, 4);
+    Slice ver_slice = Slice(ckey.data() + ckey.length() - 12, 8);
+    uint32_t len = 0;
+    int64_t ver = 0;
+    decode_integral(&len_slice, &len);
+    decode_integral(&ver_slice, &ver);
+    CHECK(ckey.length() == len + 12) << "split_key_with_ver error";
+    key = ckey.substr(0, len);
+    decode_version(ver, op, version);
+    return Status::OK();
+}
+
 } // namespace starrocks

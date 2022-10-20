@@ -63,6 +63,10 @@ TEST(RowStoreEncoderTest, testEncodeInt) {
                   dchunk->get_column_by_index(2)->get(i).get_int32());
         ASSERT_EQ(pchunk->get_column_by_index(3)->get(i).get_int128(),
                   dchunk->get_column_by_index(3)->get(i).get_int128());
+        ASSERT_EQ(i * 2343, dchunk->get_column_by_index(0)->get(i).get_int32());
+        ASSERT_EQ(i * 2343, dchunk->get_column_by_index(1)->get(i).get_int128());
+        ASSERT_EQ(i * 2343, dchunk->get_column_by_index(2)->get(i).get_int32());
+        ASSERT_EQ(i * 2343, dchunk->get_column_by_index(3)->get(i).get_int128());
     }
 }
 
@@ -109,6 +113,29 @@ TEST(RowStoreEncoderTest, testEncodeMix) {
                   dchunk->get_column_by_index(2)->get(i).get_int32());
         ASSERT_EQ(pchunk->get_column_by_index(3)->get(i).get<uint8>(),
                   dchunk->get_column_by_index(3)->get(i).get<uint8>());
+        ASSERT_EQ(i * 2343, dchunk->get_column_by_index(0)->get(i).get_int32());
+        ASSERT_EQ(i * 2343, dchunk->get_column_by_index(2)->get(i).get_int32());
+        if (i % 5 != 0) {
+            string tmpstr = StringPrintf("slice000%d", i * 17);
+            ASSERT_EQ(tmpstr, dchunk->get_column_by_index(1)->get(i).get_slice().to_string());
+        }
+    }
+}
+
+TEST(RowStoreEncoderTest, testEncodeVersion) {
+    for (int i = 0; i < 1000; i++) {
+        string tmpstr = StringPrintf("slice000%d", i * 17);
+        int8_t op = i % 2;
+        int64_t ver = i * 1000;
+        string buf = tmpstr;
+        RowStoreEncoder::combine_key_with_ver(buf, op, ver);
+        int8_t dop = 0;
+        int64_t dver = 0;
+        string dstr;
+        RowStoreEncoder::split_key_with_ver(buf, dstr, dop, dver);
+        ASSERT_EQ(op, dop);
+        ASSERT_EQ(ver, dver);
+        ASSERT_EQ(tmpstr, dstr);
     }
 }
 

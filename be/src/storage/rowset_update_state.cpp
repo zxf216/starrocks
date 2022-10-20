@@ -12,6 +12,8 @@
 #include "storage/rowset/segment_rewriter.h"
 #include "storage/tablet.h"
 #include "storage/tablet_meta_manager.h"
+#include "storage/row_store.h"
+#include "storage/row_store_encoder.h"
 #include "util/defer_op.h"
 #include "util/phmap/phmap.h"
 #include "util/stack_util.h"
@@ -431,6 +433,11 @@ std::string RowsetUpdateState::to_string() const {
 }
 
 Status RowsetUpdateState::apply_to_rowstore(RowStore* rowstore, int64_t version) {
+    /*
+    std::vector<std::string> keys, values;
+    RowStoreEncoder::chunk_to_keys(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0, _rowstore_chunk->num_rows(), keys);
+    RowStoreEncoder::chunk_to_values(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0, _rowstore_chunk->num_rows(), values);
+    rowstore->batch_put(keys, values, version);*/
     return Status::OK();
 }
 

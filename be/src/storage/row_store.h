@@ -31,7 +31,7 @@ public:
     Status init();
 
     // write key value pairs to rowstore with version
-    Status batch_put(const std::vector<std::string>& keys, const std::vector<std::string>& values, int64_t version);
+    Status batch_put(std::vector<std::string>& keys, const std::vector<std::string>& values, int64_t version);
 
 private:
     std::string _db_path;

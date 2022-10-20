@@ -9,8 +9,8 @@
 namespace starrocks {
 
 // op
-#define DEL_OP 0
-#define PUT_OP 1
+#define RS_DEL_OP 0
+#define RS_PUT_OP 1
 // only use 56bit version
 #define VER_MASK 0xFFFFFFFFFFFFFF
 // key format:
@@ -33,7 +33,8 @@ public:
                                 size_t len, std::vector<std::string>& values);
     static Status kvs_to_chunk(const std::vector<std::string>& keys, const std::vector<std::string>& values,
                                const vectorized::Schema& schema, vectorized::Chunk* dest);
-    //static void combine_key_with_ver(std::string& key, const int8_t op, );
+    static void combine_key_with_ver(std::string& key, const int8_t op, const int64_t version);
+    static Status split_key_with_ver(const std::string& ckey, std::string& key, int8_t& op, int64_t& version);
 };
 
 } // namespace starrocks

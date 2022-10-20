@@ -2,15 +2,15 @@
 
 #include "storage/row_store.h"
 
-#include "rocksdb/filter_policy.h"
-#include "rocksdb/table.h"
-
 #include "rocksdb/db.h"
+#include "rocksdb/filter_policy.h"
 #include "rocksdb/options.h"
 #include "rocksdb/slice.h"
 #include "rocksdb/slice_transform.h"
+#include "rocksdb/table.h"
 #include "storage/olap_define.h"
 #include "storage/rocksdb_status_adapter.h"
+#include "storage/row_store_encoder.h"
 
 using rocksdb::DB;
 using rocksdb::Options;
@@ -52,11 +52,11 @@ Status RowStore::init() {
     return Status::OK();
 }
 
-Status RowStore::batch_put(const std::vector<std::string>& keys, const std::vector<std::string>& values,
-                           int64_t version) {
+Status RowStore::batch_put(std::vector<std::string>& keys, const std::vector<std::string>& values, int64_t version) {
     CHECK(keys.size() == values.size()) << "rowstore batch_put invalid kv pairs";
     rocksdb::WriteBatch wb;
     for (int i = 0; i < keys.size(); i++) {
+        RowStoreEncoder::combine_key_with_ver(keys[i], RS_PUT_OP, version);
         wb.Put(keys[i], values[i]);
     }
     WriteOptions write_options;
