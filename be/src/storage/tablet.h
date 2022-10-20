@@ -54,6 +54,7 @@ class TabletUpdates;
 class CompactionTask;
 class CompactionContext;
 class CompactionCandidate;
+class RowStore;
 
 using TabletSharedPtr = std::shared_ptr<Tablet>;
 
@@ -254,6 +255,8 @@ public:
     std::string get_store_type() const { return _tablet_meta->get_store_type(); }
 
     Status contains_version(const Version& version);
+
+    RowStore* row_store() { return _data_dir->get_rowstore(); }
 
 protected:
     void on_shutdown() override;
