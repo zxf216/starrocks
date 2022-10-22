@@ -7,6 +7,7 @@
 #include "column/fixed_length_column.h"
 #include "column/schema.h"
 #include "gutil/endian.h"
+#include "storage/olap_common.h"
 #include "storage/tablet_schema.h"
 #include "types/date_value.hpp"
 
@@ -383,6 +384,16 @@ Status RowStoreEncoder::split_key_with_ver(const std::string& ckey, std::string&
     key = ckey.substr(0, len);
     decode_version(ver, op, version);
     return Status::OK();
+}
+
+std::unique_ptr<vectorized::Schema> RowStoreEncoder::create_binary_schema() {
+    vectorized::Fields fields;
+    string name = "col0";
+    auto fd = new vectorized::Field(0, name, OLAP_FIELD_TYPE_VARCHAR, false);
+    fd->set_is_key(true);
+    fd->set_aggregate_method(OLAP_FIELD_AGGREGATION_NONE);
+    fields.emplace_back(fd);
+    return std::unique_ptr<vectorized::Schema>(new vectorized::Schema(std::move(fields), KeysType::PRIMARY_KEYS));
 }
 
 } // namespace starrocks

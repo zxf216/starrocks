@@ -19,6 +19,10 @@ class ColumnFamilyHandle;
 
 namespace starrocks {
 
+namespace vectorized {
+class Chunk;
+} // namespace vectorized
+
 using ColumnFamilyHandle = rocksdb::ColumnFamilyHandle;
 using WriteBatch = rocksdb::WriteBatch;
 
@@ -36,9 +40,11 @@ public:
 
     ///  without mvcc
     // write key value pairs to rowstore
-    Status batch_put(const std::vector<std::string>& keys, const std::vector<std::string>& values);
+    Status batch_put(rocksdb::WriteBatch& wb);
 
     void multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values, std::vector<Status>& rets);
+
+    Status get_chunk(const std::vector<std::string>& keys, vectorized::Chunk* chunk);
 
 private:
     std::string _db_path;

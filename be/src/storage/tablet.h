@@ -254,6 +254,10 @@ public:
 
     std::string get_store_type() const { return _tablet_meta->get_store_type(); }
 
+    const bool is_row_store() const { return get_store_type() == "row"; }
+
+    const bool is_rowmvcc_store() const { return get_store_type() == "row_mvcc"; }
+
     Status contains_version(const Version& version);
 
     RowStore* row_store();

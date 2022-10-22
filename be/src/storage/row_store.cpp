@@ -2,6 +2,7 @@
 
 #include "storage/row_store.h"
 
+#include "column/chunk.h"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/options.h"
@@ -57,6 +58,7 @@ Status RowStore::init(const bool support_mvcc) {
 
 Status RowStore::batch_put(std::vector<std::string>& keys, const std::vector<std::string>& values, int64_t version) {
     CHECK(keys.size() == values.size()) << "rowstore batch_put invalid kv pairs";
+    CHECK(_db != nullptr) << "invalid db";
     rocksdb::WriteBatch wb;
     for (int i = 0; i < keys.size(); i++) {
         RowStoreEncoder::combine_key_with_ver(keys[i], RS_PUT_OP, version);
@@ -68,14 +70,14 @@ Status RowStore::batch_put(std::vector<std::string>& keys, const std::vector<std
     return to_status(s);
 }
 
-Status RowStore::batch_put(const std::vector<std::string>& keys, const std::vector<std::string>& values) {
-    CHECK(keys.size() == values.size()) << "rowstore batch_put invalid kv pairs";
-    rocksdb::WriteBatch wb;
-    for (int i = 0; i < keys.size(); i++) {
-        wb.Put(keys[i], values[i]);
+Status RowStore::batch_put(rocksdb::WriteBatch& wb) {
+    if (_db == nullptr) {
+        LOG(INFO) << "[ROWSTORE] batch_put invalid db size : " << wb.Count();
     }
+    CHECK(_db != nullptr) << "invalid db";
     WriteOptions write_options;
     write_options.sync = true;
+    LOG(INFO) << "[ROWSTORE] batch_put size : " << wb.Count();
     rocksdb::Status s = _db->Write(write_options, &wb);
     return to_status(s);
 }
@@ -92,6 +94,19 @@ void RowStore::multi_get(const std::vector<std::string>& keys, std::vector<std::
     for (const auto& s : ss) {
         rets.push_back(to_status(s));
     }
+}
+
+Status RowStore::get_chunk(const std::vector<std::string>& keys, vectorized::Chunk* chunk) {
+    std::vector<std::string> values;
+    std::vector<Status> rets;
+    multi_get(keys, values, rets);
+    for (const auto& s : rets) {
+        if (!s.ok()) {
+            return s;
+        }
+    }
+    RowStoreEncoder::kvs_to_chunk(keys, values, *chunk->schema().get(), chunk);
+    return Status::OK();
 }
 
 } // namespace starrocks

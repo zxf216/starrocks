@@ -45,7 +45,8 @@ Status TabletMeta::create(const TCreateTabletReq& request, const TabletUid& tabl
             request.tablet_schema, next_unique_id,
             request.__isset.enable_persistent_index ? request.enable_persistent_index : false, col_ordinal_to_unique_id,
             tablet_uid, request.__isset.tablet_type ? request.tablet_type : TTabletType::TABLET_TYPE_DISK,
-            request.__isset.compression_type ? request.compression_type : TCompressionType::LZ4_FRAME);
+            request.__isset.compression_type ? request.compression_type : TCompressionType::LZ4_FRAME,
+            request.store_type);
     return Status::OK();
 }
 
@@ -58,7 +59,7 @@ TabletMeta::TabletMeta(int64_t table_id, int64_t partition_id, int64_t tablet_id
                        bool enable_persistent_index,
                        const std::unordered_map<uint32_t, uint32_t>& col_ordinal_to_unique_id,
                        const TabletUid& tablet_uid, TTabletType::type tabletType,
-                       TCompressionType::type compression_type)
+                       TCompressionType::type compression_type, std::string store_type)
         : _tablet_uid(0, 0) {
     TabletMetaPB tablet_meta_pb;
     tablet_meta_pb.set_table_id(table_id);
@@ -70,6 +71,7 @@ TabletMeta::TabletMeta(int64_t table_id, int64_t partition_id, int64_t tablet_id
     tablet_meta_pb.set_cumulative_layer_point(-1);
     tablet_meta_pb.set_tablet_state(PB_RUNNING);
     tablet_meta_pb.set_enable_persistent_index(enable_persistent_index);
+    tablet_meta_pb.set_store_type(store_type);
     *(tablet_meta_pb.mutable_tablet_uid()) = tablet_uid.to_proto();
     tablet_meta_pb.set_tablet_type(tabletType == TTabletType::TABLET_TYPE_MEMORY ? TabletTypePB::TABLET_TYPE_MEMORY
                                                                                  : TabletTypePB::TABLET_TYPE_DISK);
@@ -201,6 +203,8 @@ void TabletMeta::init_from_pb(TabletMetaPB* ptablet_meta_pb) {
     }
 
     _store_type = "column";
+    LOG(INFO) << "[ROWSTORE] tablet_meta " << tablet_meta_pb.store_type() << " tablet_id "
+              << tablet_meta_pb.tablet_id();
     if (tablet_meta_pb.has_store_type() && !tablet_meta_pb.store_type().empty()) {
         _store_type = tablet_meta_pb.store_type();
     }

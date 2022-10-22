@@ -35,6 +35,7 @@ public:
                                const vectorized::Schema& schema, vectorized::Chunk* dest);
     static void combine_key_with_ver(std::string& key, const int8_t op, const int64_t version);
     static Status split_key_with_ver(const std::string& ckey, std::string& key, int8_t& op, int64_t& version);
+    static std::unique_ptr<vectorized::Schema> create_binary_schema();
 };
 
 } // namespace starrocks

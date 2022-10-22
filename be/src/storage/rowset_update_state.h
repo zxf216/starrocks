@@ -31,7 +31,7 @@ public:
     Status apply(Tablet* tablet, Rowset* rowset, uint32_t rowset_id, EditVersion latest_applied_version,
                  const PrimaryIndex& index);
 
-    Status apply_to_rowstore(const std::string& store_type, RowStore* rowstore, int64_t version);
+    Status apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowStore* rowstore, int64_t version);
 
     const std::vector<ColumnUniquePtr>& upserts() const { return _upserts; }
     const std::vector<ColumnUniquePtr>& deletes() const { return _deletes; }
@@ -75,6 +75,8 @@ private:
 
     // chunk for rowstore
     vectorized::ChunkPtr _rowstore_chunk;
+    std::vector<std::vector<std::string>> _rowstore_upsert_keys;
+    std::vector<std::vector<std::string>> _rowstore_del_keys;
 
     // TODO: dump to disk if memory usage is too large
     std::vector<PartialUpdateState> _partial_update_states;

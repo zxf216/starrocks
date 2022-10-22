@@ -799,7 +799,7 @@ void TabletUpdates::_apply_rowset_commit(const EditVersionInfo& version_info) {
         return;
     }
     /// Write chunk to rowstore
-    st = state.apply_to_rowstore(_tablet.get_store_type(), _tablet.row_store(), version.major());
+    st = state.apply_to_rowstore(&_tablet, rowset.get(), _tablet.row_store(), version.major());
     if (!st.ok()) {
         std::string msg = Substitute("apply_to_rowstore failed: $0 $1", st.to_string(), debug_string());
         LOG(ERROR) << msg;
