@@ -96,7 +96,8 @@ void RowStore::multi_get(const std::vector<std::string>& keys, std::vector<std::
     }
 }
 
-Status RowStore::get_chunk(const std::vector<std::string>& keys, vectorized::Chunk* chunk) {
+Status RowStore::get_chunk(const std::vector<std::string>& keys, const vectorized::Schema& schema,
+                           vectorized::Chunk* chunk) {
     std::vector<std::string> values;
     std::vector<Status> rets;
     multi_get(keys, values, rets);
@@ -105,7 +106,9 @@ Status RowStore::get_chunk(const std::vector<std::string>& keys, vectorized::Chu
             return s;
         }
     }
-    RowStoreEncoder::kvs_to_chunk(keys, values, *chunk->schema().get(), chunk);
+    RowStoreEncoder::kvs_to_chunk(keys, values, schema, chunk);
+    LOG(INFO) << "[ROWSTORE] get_chunk key size: " << keys.size() << " val size: " << values.size()
+              << " chunk: " << chunk->debug_columns();
     return Status::OK();
 }
 

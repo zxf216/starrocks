@@ -79,16 +79,7 @@ Status RowsetUpdateState::_do_load(Tablet* tablet, Rowset* rowset) {
         }
         _deletes.emplace_back(std::move(col));
         if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
-            std::unique_ptr<vectorized::Schema> select_schema;
-            if (pkey_schema.num_key_fields() == 1) {
-                select_schema.reset(&pkey_schema);
-            } else {
-                select_schema = std::move(RowStoreEncoder::create_binary_schema());
-            }
-            auto del_chunk_ptr = ChunkHelper::new_chunk(pkey_schema, 4096);
-            del_chunk_ptr->append_column(std::shared_ptr<vectorized::Column>(col.get()), select_schema.get()->field(0));
-            RowStoreEncoder::chunk_to_keys(pkey_schema, *del_chunk_ptr.get(), 0, del_chunk_ptr.get()->num_rows(),
-                                           _rowstore_del_keys[i]);
+            RowStoreEncoder::pk_column_to_keys(pkey_schema, _deletes[i].get(), _rowstore_del_keys[i]);
         }
     }
 
@@ -132,7 +123,8 @@ Status RowsetUpdateState::_do_load(Tablet* tablet, Rowset* rowset) {
                     PrimaryKeyEncoder::encode(pkey_schema, *chunk, 0, chunk->num_rows(), col.get());
                     if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
                         _rowstore_chunk.get()->append(*chunk);
-                        LOG(INFO) << "[ROWSTORE]iterate segment : " << chunk->debug_columns();
+                        LOG(INFO) << "[ROWSTORE]iterate segment : " << chunk->debug_columns()
+                                  << " res: " << _rowstore_chunk.get()->debug_columns();
                     }
                 }
             }
@@ -141,7 +133,8 @@ Status RowsetUpdateState::_do_load(Tablet* tablet, Rowset* rowset) {
         }
         dest = std::move(col);
         if ((tablet->is_row_store() || tablet->is_rowmvcc_store()) && dest.get() != nullptr) {
-            RowStoreEncoder::chunk_to_keys(pkey_schema, *chunk, 0, chunk->num_rows(), _rowstore_upsert_keys[i]);
+            LOG(INFO) << "[ROWSTORE] get upserts size " << dest->size();
+            RowStoreEncoder::pk_column_to_keys(pkey_schema, dest.get(), _rowstore_upsert_keys[i]);
         }
     }
     for (const auto& upsert : _upserts) {
@@ -277,18 +270,19 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
     if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
         // read from rowstore
         LOG(INFO) << "[ROWSTORE] read column from rowstore, read_column_ids size " << read_column_ids.size()
-                  << " txn_meta.partial_update_column_ids size" << txn_meta.partial_update_column_ids().size();
+                  << " txn_meta.partial_update_column_ids size " << txn_meta.partial_update_column_ids().size();
         if (read_column_ids.size() > 0) {
+            auto schema = ChunkHelper::convert_schema_to_format_v2(tablet_schema);
             for (size_t i = 0; i < num_segments; i++) {
-                auto chunk = ChunkHelper::new_chunk(ChunkHelper::convert_schema_to_format_v2(tablet_schema), 4096);
-                RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], chunk.get()));
+                auto chunk = ChunkHelper::new_chunk(schema, 1024);
+                RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], schema, chunk.get()));
                 total_rows += _partial_update_states[i].src_rss_rowids.size();
                 for (size_t col_idx = 0; col_idx < read_column_ids.size(); col_idx++) {
                     _partial_update_states[i].write_columns[col_idx]->append(
-                            *chunk->get_column_by_id(read_column_ids[col_idx]).get());
+                            *(chunk->get_column_by_id(read_column_ids[col_idx])));
                 }
                 LOG(INFO) << "[ROWSTORE]upsert_key_size : " << _rowstore_upsert_keys[i].size()
-                          << " get chunk row_size : " << chunk->get_column_by_id(read_column_ids[0]).get()->size();
+                          << " chunk : " << chunk->debug_columns();
             }
         }
     } else {
@@ -488,26 +482,29 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
         return Status::OK();
     }
     const auto& tablet_schema = tablet->tablet_schema();
-    const auto& txn_meta = rowset->rowset_meta()->get_meta_pb().txn_meta();
+    std::vector<std::string> keys, values;
     std::string debug_str = "read_column: ";
 
-    std::vector<uint32_t> update_column_ids(txn_meta.partial_update_column_ids().begin(),
-                                            txn_meta.partial_update_column_ids().end());
-    std::set<uint32_t> update_columns_set(update_column_ids.begin(), update_column_ids.end());
+    if (rowset->rowset_meta()->get_meta_pb().has_txn_meta()) {
+        // partial update, need fill up column that not exist in segment file
+        const auto& txn_meta = rowset->rowset_meta()->get_meta_pb().txn_meta();
+        std::vector<uint32_t> update_column_ids(txn_meta.partial_update_column_ids().begin(),
+                                                txn_meta.partial_update_column_ids().end());
+        std::set<uint32_t> update_columns_set(update_column_ids.begin(), update_column_ids.end());
 
-    std::vector<uint32_t> read_column_ids;
-    for (uint32_t i = 0; i < tablet_schema.num_columns(); i++) {
-        if (update_columns_set.find(i) == update_columns_set.end()) {
-            read_column_ids.push_back(i);
-            debug_str += std::to_string(i) + ", ";
+        std::vector<uint32_t> read_column_ids;
+        for (uint32_t i = 0; i < tablet_schema.num_columns(); i++) {
+            if (update_columns_set.find(i) == update_columns_set.end()) {
+                read_column_ids.push_back(i);
+                debug_str += std::to_string(i) + ", ";
+            }
         }
-    }
-    std::vector<std::string> keys, values;
-    // fill rowstore_chunk with read columns
-    for (int i = 0; i < _partial_update_states.size(); i++) {
-        for (int j = 0; j < _partial_update_states[i].write_columns.size(); j++) {
-            _rowstore_chunk->get_column_by_id(read_column_ids[j])
-                    ->append(*_partial_update_states[i].write_columns[j].get());
+        // fill rowstore_chunk with read columns
+        for (int i = 0; i < _partial_update_states.size(); i++) {
+            for (int j = 0; j < _partial_update_states[i].write_columns.size(); j++) {
+                _rowstore_chunk->get_column_by_id(read_column_ids[j])
+                        ->append(*_partial_update_states[i].write_columns[j].get());
+            }
         }
     }
     // change chunk to key value pairs

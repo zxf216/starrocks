@@ -21,6 +21,7 @@ namespace starrocks {
 
 namespace vectorized {
 class Chunk;
+class Schema;
 } // namespace vectorized
 
 using ColumnFamilyHandle = rocksdb::ColumnFamilyHandle;
@@ -44,7 +45,7 @@ public:
 
     void multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values, std::vector<Status>& rets);
 
-    Status get_chunk(const std::vector<std::string>& keys, vectorized::Chunk* chunk);
+    Status get_chunk(const std::vector<std::string>& keys, const vectorized::Schema& schema, vectorized::Chunk* chunk);
 
 private:
     std::string _db_path;

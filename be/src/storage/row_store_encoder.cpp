@@ -7,6 +7,7 @@
 #include "column/fixed_length_column.h"
 #include "column/schema.h"
 #include "gutil/endian.h"
+#include "storage/chunk_helper.h"
 #include "storage/olap_common.h"
 #include "storage/tablet_schema.h"
 #include "types/date_value.hpp"
@@ -302,62 +303,70 @@ Status RowStoreEncoder::kvs_to_chunk(const std::vector<std::string>& keys, const
             if (j == schema.num_key_fields()) {
                 s = Slice(values[i]);
             }
-            auto& column = *(dest->get_column_by_index(j));
+            //auto& column = *(dest->get_column_by_index(j));
             switch (schema.field(j)->type()->type()) {
             case OLAP_FIELD_TYPE_BOOL: {
-                auto& tc = down_cast<vectorized::UInt8Column&>(column);
+                //auto& tc = down_cast<vectorized::UInt8Column&>(column);
                 uint8_t v;
                 decode_integral(&s, &v);
-                tc.append((int8_t)v);
+                //tc.append((int8_t)v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_TINYINT: {
-                auto& tc = down_cast<vectorized::Int8Column&>(column);
+                //auto& tc = down_cast<vectorized::Int8Column&>(column);
                 int8_t v;
                 decode_integral(&s, &v);
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_SMALLINT: {
-                auto& tc = down_cast<vectorized::Int16Column&>(column);
+                //auto& tc = down_cast<vectorized::Int16Column&>(column);
                 int16_t v;
                 decode_integral(&s, &v);
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_INT: {
-                auto& tc = down_cast<vectorized::Int32Column&>(column);
+                //auto& tc = down_cast<vectorized::Int32Column&>(column);
                 int32_t v;
                 decode_integral(&s, &v);
-                tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_BIGINT: {
-                auto& tc = down_cast<vectorized::Int64Column&>(column);
+                //auto& tc = down_cast<vectorized::Int64Column&>(column);
                 int64_t v;
                 decode_integral(&s, &v);
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_LARGEINT: {
-                auto& tc = down_cast<vectorized::Int128Column&>(column);
+                //auto& tc = down_cast<vectorized::Int128Column&>(column);
                 int128_t v;
                 decode_integral(&s, &v);
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_VARCHAR: {
-                auto& tc = down_cast<vectorized::BinaryColumn&>(column);
+                //auto& tc = down_cast<vectorized::BinaryColumn&>(column);
                 string v;
                 RETURN_IF_ERROR(
                         decode_slice(&s, &v, (j == schema.num_fields() - 1) || (j == schema.num_key_fields() - 1)));
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_DATE_V2: {
-                auto& tc = down_cast<vectorized::DateColumn&>(column);
+                //auto& tc = down_cast<vectorized::DateColumn&>(column);
                 vectorized::DateValue v;
                 decode_integral(&s, &v._julian);
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             case OLAP_FIELD_TYPE_DATETIME: {
-                auto& tc = down_cast<vectorized::TimestampColumn&>(column);
+                //auto& tc = down_cast<vectorized::TimestampColumn&>(column);
                 vectorized::TimestampValue v;
                 decode_integral(&s, &v._timestamp);
-                tc.append(v);
+                //tc.append(v);
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
             } break;
             default:
                 CHECK(false) << "type not supported for primary key encoding";
@@ -386,7 +395,7 @@ Status RowStoreEncoder::split_key_with_ver(const std::string& ckey, std::string&
     return Status::OK();
 }
 
-std::unique_ptr<vectorized::Schema> RowStoreEncoder::create_binary_schema() {
+std::unique_ptr<vectorized::Schema> create_binary_schema() {
     vectorized::Fields fields;
     string name = "col0";
     auto fd = new vectorized::Field(0, name, OLAP_FIELD_TYPE_VARCHAR, false);
@@ -394,6 +403,23 @@ std::unique_ptr<vectorized::Schema> RowStoreEncoder::create_binary_schema() {
     fd->set_aggregate_method(OLAP_FIELD_AGGREGATION_NONE);
     fields.emplace_back(fd);
     return std::unique_ptr<vectorized::Schema>(new vectorized::Schema(std::move(fields), KeysType::PRIMARY_KEYS));
+}
+
+void RowStoreEncoder::pk_column_to_keys(vectorized::Schema& pkey_schema, vectorized::Column* column,
+                                        std::vector<std::string>& keys) {
+    std::unique_ptr<vectorized::Schema> create_schema;
+    vectorized::Schema* select_schema;
+    if (pkey_schema.num_key_fields() == 1) {
+        select_schema = &pkey_schema;
+    } else {
+        create_schema = std::move(create_binary_schema());
+        select_schema = create_schema.get();
+    }
+    auto chunk_ptr = ChunkHelper::new_chunk(*select_schema, 4096);
+    chunk_ptr->get_column_by_index(0)->append(*column);
+    LOG(INFO) << "[ROWSTORE] pk_column_to_keys, chunk size : " << chunk_ptr.get()->num_rows() << " debug "
+              << chunk_ptr.get()->debug_columns();
+    RowStoreEncoder::chunk_to_keys(*select_schema, *chunk_ptr.get(), 0, chunk_ptr.get()->num_rows(), keys);
 }
 
 } // namespace starrocks

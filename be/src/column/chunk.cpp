@@ -365,7 +365,7 @@ std::string Chunk::debug_columns() const {
         os << ", ";
     }
     os << _columns[_columns.size() - 1]->is_constant() << "]";
-    os << "col_size[";
+    os << " col_size[";
     for (size_t col = 0; col < _columns.size() - 1; ++col) {
         os << _columns[col].get()->size();
         os << ", ";
