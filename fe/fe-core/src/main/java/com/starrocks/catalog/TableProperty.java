@@ -219,7 +219,7 @@ public class TableProperty implements Writable, GsonPostProcessable {
     }
 
     public String storeType() {
-        return properties.get(PropertyAnalyzer.PROPERTIES_STORAGE_TYPE);
+        return properties.get(PropertyAnalyzer.PROPERTIES_STORE_TYPE);
     }
 
     public TWriteQuorumType writeQuorum() {
