@@ -26,6 +26,16 @@ class Schema;
 
 using ColumnFamilyHandle = rocksdb::ColumnFamilyHandle;
 using WriteBatch = rocksdb::WriteBatch;
+using SliceUniquePtr = std::unique_ptr<rocksdb::Slice>;
+
+enum RowStoreColumnFamilyIndex {
+    RS_NO_MVCC_INDEX = 0,
+    RS_MVCC_INDEX = 1,
+    RS_NUM_COLUMN_FAMILY_INDEX = 2,
+};
+
+static const std::string ROWSTORE_NO_MVCC_CF = "default";
+static const std::string ROWSTORE_MVCC_CF = "mvcc_cf";
 
 class RowStore {
 public:
@@ -33,15 +43,21 @@ public:
 
     virtual ~RowStore();
 
-    Status init(const bool support_mvcc);
+    Status init();
+    Status batch_put(rocksdb::WriteBatch& wb);
+    rocksdb::ColumnFamilyHandle* cf_handle(RowStoreColumnFamilyIndex index) { return _handles[index]; }
+    static SliceUniquePtr ver_to_slice(int64_t ver, char* buf);
+    Status gc_version(int64_t ver);
 
     /// with mvcc
     // write key value pairs to rowstore with version
-    Status batch_put(std::vector<std::string>& keys, const std::vector<std::string>& values, int64_t version);
+    void multi_get_ver(const std::vector<std::string>& keys, const int64_t version, std::vector<std::string>& values,
+                       std::vector<Status>& rets);
+    Status get_chunk_ver(const std::vector<std::string>& keys, const vectorized::Schema& schema, const int64_t version,
+                         vectorized::Chunk* chunk);
 
     ///  without mvcc
     // write key value pairs to rowstore
-    Status batch_put(rocksdb::WriteBatch& wb);
 
     void multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values, std::vector<Status>& rets);
 
@@ -50,7 +66,8 @@ public:
 private:
     std::string _db_path;
     rocksdb::DB* _db;
-    uint32_t key_prefix_len_{10};
+    std::vector<rocksdb::ColumnFamilyHandle*> _handles;
+    //uint32_t key_prefix_len_{10};
 };
 
 } // namespace starrocks

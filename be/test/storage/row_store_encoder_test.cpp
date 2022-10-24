@@ -8,7 +8,9 @@
 #include "column/chunk.h"
 #include "column/datum.h"
 #include "column/schema.h"
+#include "fs/fs_util.h"
 #include "storage/chunk_helper.h"
+#include "storage/row_store.h"
 
 using namespace std;
 
@@ -136,6 +138,86 @@ TEST(RowStoreEncoderTest, testEncodeVersion) {
         ASSERT_EQ(op, dop);
         ASSERT_EQ(ver, dver);
         ASSERT_EQ(tmpstr, dstr);
+    }
+}
+
+TEST(RowStoreEncoderTest, testMVCCRowStore) {
+    std::string _root_path = "./ut_dir/kv_store_test";
+    fs::remove_all(_root_path);
+    fs::create_directories(_root_path);
+    auto rs = std::make_unique<RowStore>(_root_path);
+    Status s = rs->init();
+    std::cout << "init " << s.get_error_msg() << std::endl;
+    ASSERT_TRUE(s.ok());
+    // write data with ver
+    for (int ver = 1; ver <= 5; ver++) {
+        rocksdb::WriteBatch wb(0, 0, 8);
+        int64_t ver1 = ver * 100;
+        for (int i = 0; i < 10; i++) {
+            wb.Put(rs->cf_handle(RS_MVCC_INDEX), "key_" + std::to_string(i),
+                   "val_" + std::to_string(i) + "_" + std::to_string(ver1));
+        }
+
+        char buf[8];
+        SliceUniquePtr ptr = RowStore::ver_to_slice(ver1, buf);
+        wb.AssignTimestamp(*ptr);
+        Status s = rs->batch_put(wb);
+        std::cout << "batch_put " << s.get_error_msg() << std::endl;
+        ASSERT_TRUE(s.ok());
+    }
+    // read data with ver
+    for (int ver = 1; ver <= 5; ver++) {
+        rocksdb::WriteBatch wb;
+        int64_t ver1 = ver * 100;
+        std::vector<std::string> keys;
+        for (int i = 0; i < 10; i++) {
+            keys.push_back("key_" + std::to_string(i));
+        }
+        std::vector<std::string> vals;
+        std::vector<Status> rets;
+        rs->multi_get_ver(keys, ver1, vals, rets);
+        ASSERT_EQ(vals.size(), keys.size());
+        ASSERT_EQ(vals.size(), rets.size());
+        for (int i = 0; i < vals.size(); i++) {
+            ASSERT_TRUE(rets[i].ok());
+        }
+        for (int i = 0; i < vals.size(); i++) {
+            ASSERT_EQ(vals[i], "val_" + std::to_string(i) + "_" + std::to_string(ver1));
+        }
+    }
+    // gc version 100 & 200
+    s = rs->gc_version(201);
+    ASSERT_TRUE(s.ok());
+    {
+        // read 200
+        std::vector<std::string> keys;
+        for (int i = 0; i < 10; i++) {
+            keys.push_back("key_" + std::to_string(i));
+        }
+        std::vector<std::string> vals;
+        std::vector<Status> rets;
+        rs->multi_get_ver(keys, 200, vals, rets);
+        ASSERT_EQ(vals.size(), keys.size());
+        ASSERT_EQ(vals.size(), rets.size());
+        for (int i = 0; i < vals.size(); i++) {
+            ASSERT_FALSE(rets[i].ok());
+            ASSERT_TRUE(rets[i].is_not_found());
+        }
+    }
+    {
+        // read 300
+        std::vector<std::string> keys;
+        for (int i = 0; i < 10; i++) {
+            keys.push_back("key_" + std::to_string(i));
+        }
+        std::vector<std::string> vals;
+        std::vector<Status> rets;
+        rs->multi_get_ver(keys, 300, vals, rets);
+        ASSERT_EQ(vals.size(), keys.size());
+        ASSERT_EQ(vals.size(), rets.size());
+        for (int i = 0; i < vals.size(); i++) {
+            ASSERT_TRUE(rets[i].ok());
+        }
     }
 }
 

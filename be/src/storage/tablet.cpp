@@ -81,17 +81,9 @@ Tablet::~Tablet() {
 Status Tablet::_init_once_action() {
     SCOPED_THREAD_LOCAL_CHECK_MEM_LIMIT_SETTER(false);
     VLOG(3) << "begin to load tablet. tablet=" << full_name() << ", version_size=" << _tablet_meta->version_count();
-    if (is_row_store()) {
+    if (is_row_store() || is_rowmvcc_store()) {
         LOG(INFO) << "[ROWSTORE] open db, type " << get_store_type();
-        auto st = _init_rowstore(false);
-        if (!st.ok()) {
-            LOG(WARNING) << "fail to init rowstore. tablet_id:" << tablet_id();
-            return st;
-        }
-    }
-    if (is_rowmvcc_store()) {
-        LOG(INFO) << "[ROWSTORE] open db, type " << get_store_type();
-        auto st = _init_rowstore(true);
+        auto st = _init_rowstore();
         if (!st.ok()) {
             LOG(WARNING) << "fail to init rowstore. tablet_id:" << tablet_id();
             return st;
@@ -1378,12 +1370,12 @@ RowStore* Tablet::row_store() {
     return _row_store.get();
 }
 
-Status Tablet::_init_rowstore(const bool support_mvcc) {
+Status Tablet::_init_rowstore() {
     // init row store
     _row_store = std::make_unique<RowStore>(schema_hash_path() + ROW_STORE_PREFIX);
     LOG(INFO) << "open rowstore path: " << schema_hash_path() + ROW_STORE_PREFIX;
 
-    Status s = _row_store->init(support_mvcc);
+    Status s = _row_store->init();
     LOG_IF(WARNING, !s.ok()) << "Fail to init rowstore: " << schema_hash_path() + ROW_STORE_PREFIX;
     return s;
 }

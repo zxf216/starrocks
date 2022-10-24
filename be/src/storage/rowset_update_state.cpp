@@ -608,7 +608,7 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
             wb.Delete(_rowstore_del_keys[i][j]);
         }
     }
-    if (tablet->is_row_store()) {
+    if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
         for (int i = 0; i < keys.size(); i++) {
             wb.Put(keys[i], values[i]);
         }

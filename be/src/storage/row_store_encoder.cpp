@@ -519,7 +519,7 @@ Status RowStoreEncoder::kvs_to_chunk(const std::vector<std::string>& keys, const
                 RETURN_IF_ERROR(
                         decode_slice(&s, &v, (j == schema.num_fields() - 1) || (j == schema.num_key_fields() - 1)));
                 //tc.append(v);
-                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(v));
+                dest->get_column_by_index(j).get()->append_datum(vectorized::Datum(Slice(v)));
             } break;
             case OLAP_FIELD_TYPE_DATE_V2: {
                 //auto& tc = down_cast<vectorized::DateColumn&>(column);

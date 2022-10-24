@@ -271,7 +271,7 @@ private:
     int64_t _mem_usage() { return sizeof(Tablet); }
 
     Status _init_once_action();
-    Status _init_rowstore(const bool support_mvcc);
+    Status _init_rowstore();
     void _print_missed_versions(const std::vector<Version>& missed_versions) const;
     bool _contains_rowset(const RowsetId rowset_id);
     Status _contains_version(const Version& version);
