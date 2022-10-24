@@ -13,16 +13,17 @@ namespace starrocks {
 #define RS_PUT_OP 1
 // only use 56bit version
 #define VER_MASK 0xFFFFFFFFFFFFFF
+#define OP_MASK 0xFF
 // key format:
-// | raw_key | OP 8bit | version 56bit(reserse) | raw_key length 32bit |
+// | raw_key | version 56bit(reserse) | OP 8bit | raw_key length 32bit |
 
 inline int64_t encode_version(const int8_t op, const int64_t version) {
-    return (((int64_t)op) << 56) | (VER_MASK - (version & VER_MASK));
+    return ((VER_MASK - (version & VER_MASK)) << 8) | ((int64_t)op & OP_MASK);
 }
 
 inline void decode_version(const int64_t raw_version, int8_t& op, int64_t& version) {
-    version = VER_MASK - (raw_version & VER_MASK);
-    op = (int8_t)((raw_version >> 56) & 0xF);
+    version = VER_MASK - ((raw_version >> 8) & VER_MASK);
+    op = (int8_t)(raw_version & OP_MASK);
 }
 
 class RowStoreEncoder {
