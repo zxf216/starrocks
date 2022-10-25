@@ -280,7 +280,12 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
             auto schema = ChunkHelper::convert_schema_to_format_v2(tablet_schema);
             for (size_t i = 0; i < num_segments; i++) {
                 auto chunk = ChunkHelper::new_chunk(schema, 1024);
-                RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], schema, chunk.get()));
+                if (tablet->is_row_store()) {
+                    RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], schema, chunk.get()));
+                } else {
+                    RETURN_IF_ERROR(tablet->row_store()->get_chunk_ver(_rowstore_upsert_keys[i], schema,
+                                                                       _read_version.major(), chunk.get()));
+                }
                 total_rows += _partial_update_states[i].src_rss_rowids.size();
                 for (size_t col_idx = 0; col_idx < read_column_ids.size(); col_idx++) {
                     _partial_update_states[i].write_columns[col_idx]->append(
@@ -602,24 +607,36 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
     RowStoreEncoder::chunk_to_values(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0,
                                      _rowstore_chunk->num_rows(), values);
     debug_str += "key_size: " + std::to_string(keys.size()) + " val_size: " + std::to_string(values.size());
-    rocksdb::WriteBatch wb;
+    std::unique_ptr<rocksdb::WriteBatch> wb_ptr;
+    rocksdb::ColumnFamilyHandle* cf_handle;
+    if (tablet->is_row_store()) {
+        wb_ptr = std::make_unique<rocksdb::WriteBatch>();
+        cf_handle = rowstore->cf_handle(RS_NO_MVCC_INDEX);
+    } else {
+        // for mvcc rowstore, 8 bytes for version
+        wb_ptr = std::make_unique<rocksdb::WriteBatch>(0, 0, 8);
+        cf_handle = rowstore->cf_handle(RS_MVCC_INDEX);
+    }
     for (int i = 0; i < _rowstore_del_keys.size(); i++) {
         for (int j = 0; j < _rowstore_del_keys[i].size(); j++) {
-            wb.Delete(_rowstore_del_keys[i][j]);
+            wb_ptr->Delete(cf_handle, _rowstore_del_keys[i][j]);
         }
     }
-    if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
-        for (int i = 0; i < keys.size(); i++) {
-            wb.Put(keys[i], values[i]);
-        }
-    } else {
-        // todo
+    for (int i = 0; i < keys.size(); i++) {
+        wb_ptr->Put(cf_handle, keys[i], values[i]);
+    }
+    // set version for mvcc row
+    if (tablet->is_rowmvcc_store()) {
+        char buf[8];
+        SliceUniquePtr ptr = RowStore::ver_to_slice(version, buf);
+        wb_ptr->AssignTimestamp(*ptr);
+        debug_str += " version " + std::to_string(version);
     }
     LOG(INFO) << "[ROWSTORE]apply_to_rowstore: " << debug_str;
     if (rowstore == nullptr) {
         LOG(INFO) << "[ROWSTORE] invalid rowstore, tablet id" << tablet->tablet_id();
     }
-    return rowstore->batch_put(wb);
+    return rowstore->batch_put(*wb_ptr);
 }
 
 } // namespace starrocks

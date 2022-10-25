@@ -181,12 +181,13 @@ Status RowStore::get_chunk_ver(const std::vector<std::string>& keys, const vecto
     multi_get_ver(keys, version, values, rets);
     for (const auto& s : rets) {
         if (!s.ok()) {
+            LOG(INFO) << "multi_get_ver: err: " << s.get_error_msg() << " version " << version;
             return s;
         }
     }
     RowStoreEncoder::kvs_to_chunk(keys, values, schema, chunk);
     LOG(INFO) << "[ROWSTORE] get_chunk_ver key size: " << keys.size() << " val size: " << values.size()
-              << " chunk: " << chunk->debug_columns();
+              << " chunk: " << chunk->debug_columns() << " version " << version;
     return Status::OK();
 }
 
