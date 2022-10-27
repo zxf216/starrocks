@@ -258,6 +258,8 @@ public:
 
     const bool is_rowmvcc_store() const { return get_store_type() == "row_mvcc"; }
 
+    const bool is_column_with_row_store() const { return get_store_type() == "column_with_row"; }
+
     Status contains_version(const Version& version);
 
     RowStore* row_store();

@@ -42,7 +42,8 @@ class WritableFile;
 
 namespace vectorized {
 class Chunk;
-}
+class Schema;
+} // namespace vectorized
 
 class ColumnWriter;
 
@@ -133,6 +134,7 @@ private:
     std::vector<std::unique_ptr<ColumnWriter>> _column_writers;
     std::vector<uint32_t> _column_indexes;
     bool _has_key = true;
+    std::unique_ptr<vectorized::Schema> _schema_without_full_row_column;
 
     // num rows written when appending [partial] columns
     uint32_t _num_rows_written = 0;

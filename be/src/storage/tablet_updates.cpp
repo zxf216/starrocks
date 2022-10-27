@@ -20,6 +20,7 @@
 #include "storage/chunk_iterator.h"
 #include "storage/compaction_utils.h"
 #include "storage/del_vector.h"
+#include "storage/row_store_encoder.h"
 #include "storage/rowset/default_value_column_iterator.h"
 #include "storage/rowset/rowset_factory.h"
 #include "storage/rowset/rowset_meta_manager.h"
@@ -2948,6 +2949,10 @@ Status TabletUpdates::get_column_values(std::vector<uint32_t>& column_ids, bool 
             }
         }
     }
+    std::unique_ptr<vectorized::BinaryColumn> full_row_column;
+    if (_tablet.is_column_with_row_store() && column_ids.size() > 1) {
+        full_row_column = std::make_unique<vectorized::BinaryColumn>();
+    }
     std::shared_ptr<FileSystem> fs;
     for (const auto& [rssid, rowids] : rowids_by_rssid) {
         auto iter = rssid_to_rowsets.upper_bound(rssid);
@@ -2981,12 +2986,25 @@ Status TabletUpdates::get_column_values(std::vector<uint32_t>& column_ids, bool 
         iter_opts.stats = &stats;
         ASSIGN_OR_RETURN(auto read_file, fs->new_random_access_file((*segment)->file_name()));
         iter_opts.read_file = read_file.get();
-        for (auto i = 0; i < column_ids.size(); ++i) {
+        if (full_row_column) {
+            full_row_column->reset_column();
+            full_row_column->reserve(rowids.size());
             ColumnIterator* col_iter_raw_ptr = nullptr;
-            RETURN_IF_ERROR((*segment)->new_column_iterator(column_ids[i], &col_iter_raw_ptr));
+            RETURN_IF_ERROR(
+                    (*segment)->new_column_iterator(_tablet.tablet_schema().num_columns() - 1, &col_iter_raw_ptr));
             std::unique_ptr<ColumnIterator> col_iter(col_iter_raw_ptr);
             RETURN_IF_ERROR(col_iter->init(iter_opts));
-            RETURN_IF_ERROR(col_iter->fetch_values_by_rowid(rowids.data(), rowids.size(), (*columns)[i].get()));
+            RETURN_IF_ERROR(col_iter->fetch_values_by_rowid(rowids.data(), rowids.size(), full_row_column.get()));
+            RowStoreEncoder::extract_columns_from_full_row_column(*_tablet.tablet_schema().schema(), *full_row_column,
+                                                                  column_ids, *columns);
+        } else {
+            for (auto i = 0; i < column_ids.size(); ++i) {
+                ColumnIterator* col_iter_raw_ptr = nullptr;
+                RETURN_IF_ERROR((*segment)->new_column_iterator(column_ids[i], &col_iter_raw_ptr));
+                std::unique_ptr<ColumnIterator> col_iter(col_iter_raw_ptr);
+                RETURN_IF_ERROR(col_iter->init(iter_opts));
+                RETURN_IF_ERROR(col_iter->fetch_values_by_rowid(rowids.data(), rowids.size(), (*columns)[i].get()));
+            }
         }
     }
     return Status::OK();

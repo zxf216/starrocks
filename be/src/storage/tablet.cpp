@@ -81,8 +81,8 @@ Tablet::~Tablet() {
 Status Tablet::_init_once_action() {
     SCOPED_THREAD_LOCAL_CHECK_MEM_LIMIT_SETTER(false);
     VLOG(3) << "begin to load tablet. tablet=" << full_name() << ", version_size=" << _tablet_meta->version_count();
-    LOG(INFO) << "[ROWSTORE] open db, type " << get_store_type();
     if (is_row_store()) {
+        LOG(INFO) << "[ROWSTORE] open db, type " << get_store_type();
         auto st = _init_rowstore(false);
         if (!st.ok()) {
             LOG(WARNING) << "fail to init rowstore. tablet_id:" << tablet_id();
@@ -90,6 +90,7 @@ Status Tablet::_init_once_action() {
         }
     }
     if (is_rowmvcc_store()) {
+        LOG(INFO) << "[ROWSTORE] open db, type " << get_store_type();
         auto st = _init_rowstore(true);
         if (!st.ok()) {
             LOG(WARNING) << "fail to init rowstore. tablet_id:" << tablet_id();

@@ -32,6 +32,15 @@ public:
                               size_t len, std::vector<std::string>& keys);
     static void chunk_to_values(const vectorized::Schema& schema, const vectorized::Chunk& chunk, size_t offset,
                                 size_t len, std::vector<std::string>& values);
+    static void encode_chunk_to_full_row_column(const vectorized::Schema& schema, const vectorized::Chunk& chunk,
+                                                vectorized::BinaryColumn* dest_column);
+    static void extract_columns_from_full_row_column(const vectorized::Schema& schema,
+                                                     const vectorized::BinaryColumn& full_row_column,
+                                                     const std::vector<uint32_t>& read_column_ids,
+                                                     std::vector<std::unique_ptr<vectorized::Column>>& dest);
+    static void encode_columns_to_full_row_column(const vectorized::Schema& schema,
+                                                  const std::vector<vectorized::Column*>& columns,
+                                                  vectorized::BinaryColumn& dest);
     static Status kvs_to_chunk(const std::vector<std::string>& keys, const std::vector<std::string>& values,
                                const vectorized::Schema& schema, vectorized::Chunk* dest);
     static void combine_key_with_ver(std::string& key, const int8_t op, const int64_t version);

@@ -17,6 +17,7 @@ class RowStore;
 struct PartialUpdateState {
     std::vector<uint64_t> src_rss_rowids;
     std::vector<std::unique_ptr<vectorized::Column>> write_columns;
+    vectorized::ChunkPtr partial_update_value_columns; // only used for column_with_row store
 };
 
 class RowsetUpdateState {
@@ -80,6 +81,8 @@ private:
 
     // TODO: dump to disk if memory usage is too large
     std::vector<PartialUpdateState> _partial_update_states;
+
+    std::vector<uint32_t> _partial_update_value_column_ids;
 
     RowsetUpdateState(const RowsetUpdateState&) = delete;
     const RowsetUpdateState& operator=(const RowsetUpdateState&) = delete;
