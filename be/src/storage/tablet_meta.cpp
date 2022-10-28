@@ -203,8 +203,6 @@ void TabletMeta::init_from_pb(TabletMetaPB* ptablet_meta_pb) {
     }
 
     _store_type = "column";
-    LOG(INFO) << "[ROWSTORE] tablet_meta " << tablet_meta_pb.store_type() << " tablet_id "
-              << tablet_meta_pb.tablet_id();
     if (tablet_meta_pb.has_store_type() && !tablet_meta_pb.store_type().empty()) {
         _store_type = tablet_meta_pb.store_type();
     }

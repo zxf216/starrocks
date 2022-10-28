@@ -186,8 +186,6 @@ Status RowStore::get_chunk_ver(const std::vector<std::string>& keys, const vecto
         }
     }
     RowStoreEncoder::kvs_to_chunk(keys, values, schema, chunk);
-    LOG(INFO) << "[ROWSTORE] get_chunk_ver key size: " << keys.size() << " val size: " << values.size()
-              << " chunk: " << chunk->debug_columns() << " version " << version;
     return Status::OK();
 }
 
@@ -195,7 +193,6 @@ Status RowStore::batch_put(rocksdb::WriteBatch& wb) {
     CHECK(_db != nullptr) << "invalid db";
     WriteOptions write_options;
     write_options.sync = true;
-    LOG(INFO) << "[ROWSTORE] batch_put size : " << wb.Count();
     rocksdb::Status s = _db->Write(write_options, &wb);
     return to_status(s);
 }
@@ -228,8 +225,6 @@ Status RowStore::get_chunk(const std::vector<std::string>& keys, const vectorize
         }
     }
     RowStoreEncoder::kvs_to_chunk(keys, values, schema, chunk);
-    LOG(INFO) << "[ROWSTORE] get_chunk key size: " << keys.size() << " val size: " << values.size()
-              << " chunk: " << chunk->debug_columns();
     return Status::OK();
 }
 

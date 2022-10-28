@@ -584,8 +584,6 @@ void RowStoreEncoder::pk_column_to_keys(vectorized::Schema& pkey_schema, vectori
     }
     auto chunk_ptr = ChunkHelper::new_chunk(*select_schema, 4096);
     chunk_ptr->get_column_by_index(0)->append(*column);
-    LOG(INFO) << "[ROWSTORE] pk_column_to_keys, chunk size : " << chunk_ptr.get()->num_rows() << " debug "
-              << chunk_ptr.get()->debug_columns();
     RowStoreEncoder::chunk_to_keys(*select_schema, *chunk_ptr.get(), 0, chunk_ptr.get()->num_rows(), keys);
 }
 

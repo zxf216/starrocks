@@ -125,8 +125,6 @@ Status RowsetUpdateState::_do_load(Tablet* tablet, Rowset* rowset) {
                     PrimaryKeyEncoder::encode(pkey_schema, *chunk, 0, chunk->num_rows(), col.get());
                     if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
                         _rowstore_chunk.get()->append(*chunk);
-                        LOG(INFO) << "[ROWSTORE]iterate segment : " << chunk->debug_columns()
-                                  << " res: " << _rowstore_chunk.get()->debug_columns();
                     }
                 }
             }
@@ -135,7 +133,6 @@ Status RowsetUpdateState::_do_load(Tablet* tablet, Rowset* rowset) {
         }
         dest = std::move(col);
         if ((tablet->is_row_store() || tablet->is_rowmvcc_store()) && dest.get() != nullptr) {
-            LOG(INFO) << "[ROWSTORE] get upserts size " << dest->size();
             RowStoreEncoder::pk_column_to_keys(pkey_schema, dest.get(), _rowstore_upsert_keys[i]);
         }
     }
@@ -274,8 +271,6 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
     size_t total_nondefault_rows = 0;
     if (tablet->is_row_store() || tablet->is_rowmvcc_store()) {
         // read from rowstore
-        LOG(INFO) << "[ROWSTORE] read column from rowstore, read_column_ids size " << read_column_ids.size()
-                  << " txn_meta.partial_update_column_ids size " << txn_meta.partial_update_column_ids().size();
         if (read_column_ids.size() > 0) {
             auto schema = ChunkHelper::convert_schema_to_format_v2(tablet_schema);
             for (size_t i = 0; i < num_segments; i++) {
@@ -291,12 +286,9 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
                     _partial_update_states[i].write_columns[col_idx]->append(
                             *(chunk->get_column_by_id(read_column_ids[col_idx])));
                 }
-                LOG(INFO) << "[ROWSTORE]upsert_key_size : " << _rowstore_upsert_keys[i].size()
-                          << " chunk : " << chunk->debug_columns();
             }
         }
     } else {
-        LOG(INFO) << "read column from column store";
         for (size_t i = 0; i < num_segments; i++) {
             size_t num_default = 0;
             std::map<uint32_t, std::vector<uint32_t>> rowids_by_rssid;
@@ -427,8 +419,6 @@ Status RowsetUpdateState::_check_and_resolve_conflict(Tablet* tablet, Rowset* ro
                     _partial_update_states[i].write_columns[col_idx]->update_rows(
                             *(chunk->get_column_by_id(read_column_ids[col_idx])), conflict_idxes.data());
                 }
-                LOG(INFO) << "[ROWSTORE] upsert_key_size : " << _rowstore_upsert_keys[i].size()
-                          << " conflict_key_size : " << conflict_pks.size() << " chunk : " << chunk->debug_columns();
             } else {
                 std::vector<std::unique_ptr<vectorized::Column>> read_columns;
                 read_columns.resize(_partial_update_states[i].write_columns.size());
@@ -594,7 +584,6 @@ std::string RowsetUpdateState::to_string() const {
 Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowStore* rowstore, int64_t version) {
     if (!tablet->is_row_store() && !tablet->is_rowmvcc_store()) return Status::OK();
     if (_rowstore_chunk->num_rows() == 0) {
-        LOG(INFO) << "[ROWSTORE] apply_to_rowstore empty, tablet id" << tablet->tablet_id();
         return Status::OK();
     }
     const auto& tablet_schema = tablet->tablet_schema();
@@ -655,10 +644,7 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
         wb_ptr->AssignTimestamp(*ptr);
         debug_str += " version " + std::to_string(version);
     }
-    LOG(INFO) << "[ROWSTORE]apply_to_rowstore: " << debug_str;
-    if (rowstore == nullptr) {
-        LOG(INFO) << "[ROWSTORE] invalid rowstore, tablet id" << tablet->tablet_id();
-    }
+
     return rowstore->batch_put(*wb_ptr);
 }
 
