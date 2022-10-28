@@ -19,7 +19,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-syntax="proto2";
+syntax = "proto2";
 
 package starrocks;
 option java_package = "com.starrocks.proto";
@@ -98,7 +98,7 @@ message PTransmitRuntimeFilterParams {
     // if this runtime filter is partial
     // if it's partial, then it's supposed to be merged.
     // otherwise it's supported to be consumed.
-    
+
     optional bool is_partial = 1;
     optional PUniqueId query_id = 3;
     optional int32 filter_id = 4;
@@ -186,7 +186,7 @@ message PTabletWriterAddChunkRequest {
     optional int64 packet_seq = 5;
     repeated int64 tablet_ids = 6;
     // Unset if and only if eos is true.
-    optional ChunkPB chunk  = 7;
+    optional ChunkPB chunk = 7;
     // only valid when eos is true
     // valid partition ids that would write in this writer
     repeated int64 partition_ids = 8;
@@ -234,18 +234,15 @@ message PTabletWriterCancelRequest {
     optional int64 tablet_id = 5;
 };
 
-message PTabletWriterCancelResult {
-};
+message PTabletWriterCancelResult{};
 
-message PExecPlanFragmentRequest {
-};
+message PExecPlanFragmentRequest{};
 
 message PExecPlanFragmentResult {
     required StatusPB status = 1;
 };
 
-message PExecBatchPlanFragmentsRequest {
-};
+message PExecBatchPlanFragmentsRequest{};
 
 message PExecBatchPlanFragmentsResult {
     optional StatusPB status = 1;
@@ -332,9 +329,7 @@ message PKafkaOffsetProxyResult {
     repeated int64 latest_offsets = 3;
 }
 
-message PKafkaOffsetBatchProxyResult {
-    repeated PKafkaOffsetProxyResult results = 1;
-}
+message PKafkaOffsetBatchProxyResult { repeated PKafkaOffsetProxyResult results = 1; }
 
 message PProxyResult {
     required StatusPB status = 1;
@@ -379,9 +374,7 @@ message PPulsarBacklogProxyResult {
     repeated int64 backlog_nums = 2;
 }
 
-message PPulsarBacklogBatchProxyResult {
-    repeated PPulsarBacklogProxyResult results = 1;
-}
+message PPulsarBacklogBatchProxyResult { repeated PPulsarBacklogProxyResult results = 1; }
 
 message PPulsarProxyResult {
     required StatusPB status = 1;
@@ -390,26 +383,65 @@ message PPulsarProxyResult {
     optional PPulsarBacklogBatchProxyResult pulsar_backlog_batch_result = 102;
 };
 
+message RowstoreOption { optional int64 version = 1; }
+
+message PTabletRowstoreScanRequest {
+    optional int64 tablet_id = 1;
+    optional RowstoreOption option = 2;
+}
+
+message PTabletRowstoreScanResult {
+    repeated string keys = 1;
+    repeated string vals = 2;
+    required StatusPB status = 3;
+}
+
+message PTabletRowstoreMultigetRequest {
+    optional int64 tablet_id = 1;
+    optional RowstoreOption option = 2;
+    repeated string keys = 3;
+}
+
+message PTabletRowstoreMultigetResult {
+    repeated string vals = 1;
+    required StatusPB status = 2;
+}
+
+message PTabletRowstoreBatchputRequest {
+    optional int64 tablet_id = 1;
+    optional RowstoreOption option = 2;
+    repeated string keys = 3;
+    repeated string vals = 4;
+}
+
+message PTabletRowstoreBatchputResult { required StatusPB status = 1; }
+
 // NOTE(zc): If you want to add new method here,
 // you must add same method to 'doris_internal_service.proto'.
 service PInternalService {
-    rpc transmit_data(PTransmitDataParams) returns (PTransmitDataResult);
-    rpc exec_plan_fragment(PExecPlanFragmentRequest) returns (PExecPlanFragmentResult);
-    rpc exec_batch_plan_fragments(PExecBatchPlanFragmentsRequest) returns (PExecBatchPlanFragmentsResult);
-    rpc cancel_plan_fragment(PCancelPlanFragmentRequest) returns (PCancelPlanFragmentResult);
-    rpc fetch_data(PFetchDataRequest) returns (PFetchDataResult);
-    rpc tablet_writer_open(PTabletWriterOpenRequest) returns (PTabletWriterOpenResult);
-    rpc tablet_writer_add_batch(PTabletWriterAddBatchRequest) returns (PTabletWriterAddBatchResult);
-    rpc tablet_writer_cancel(PTabletWriterCancelRequest) returns (PTabletWriterCancelResult);
-    rpc trigger_profile_report(PTriggerProfileReportRequest) returns (PTriggerProfileReportResult);
-    rpc get_info(PProxyRequest) returns (PProxyResult); 
-    rpc get_pulsar_info(PPulsarProxyRequest) returns (PPulsarProxyResult); 
+    rpc transmit_data(PTransmitDataParams) returns(PTransmitDataResult);
+    rpc exec_plan_fragment(PExecPlanFragmentRequest) returns(PExecPlanFragmentResult);
+    rpc exec_batch_plan_fragments(PExecBatchPlanFragmentsRequest) returns(PExecBatchPlanFragmentsResult);
+    rpc cancel_plan_fragment(PCancelPlanFragmentRequest) returns(PCancelPlanFragmentResult);
+    rpc fetch_data(PFetchDataRequest) returns(PFetchDataResult);
+    rpc tablet_writer_open(PTabletWriterOpenRequest) returns(PTabletWriterOpenResult);
+    rpc tablet_writer_add_batch(PTabletWriterAddBatchRequest) returns(PTabletWriterAddBatchResult);
+    rpc tablet_writer_cancel(PTabletWriterCancelRequest) returns(PTabletWriterCancelResult);
+    rpc trigger_profile_report(PTriggerProfileReportRequest) returns(PTriggerProfileReportResult);
+    rpc get_info(PProxyRequest) returns(PProxyResult);
+    rpc get_pulsar_info(PPulsarProxyRequest) returns(PPulsarProxyResult);
 
     // Transmit vectorized data between backends.
-    rpc transmit_chunk(PTransmitChunkParams) returns (PTransmitChunkResult);
-    rpc tablet_writer_add_chunk(starrocks.PTabletWriterAddChunkRequest) returns (starrocks.PTabletWriterAddBatchResult);
-    rpc tablet_writer_add_chunks(starrocks.PTabletWriterAddChunksRequest) returns (starrocks.PTabletWriterAddBatchResult);
-    rpc tablet_writer_add_segment(starrocks.PTabletWriterAddSegmentRequest) returns (starrocks.PTabletWriterAddSegmentResult);
-    rpc transmit_runtime_filter(PTransmitRuntimeFilterParams) returns (PTransmitRuntimeFilterResult);
-};
+    rpc transmit_chunk(PTransmitChunkParams) returns(PTransmitChunkResult);
+    rpc tablet_writer_add_chunk(starrocks.PTabletWriterAddChunkRequest) returns(starrocks.PTabletWriterAddBatchResult);
+    rpc tablet_writer_add_chunks(starrocks.PTabletWriterAddChunksRequest)
+            returns(starrocks.PTabletWriterAddBatchResult);
+    rpc tablet_writer_add_segment(starrocks.PTabletWriterAddSegmentRequest)
+            returns(starrocks.PTabletWriterAddSegmentResult);
+    rpc transmit_runtime_filter(PTransmitRuntimeFilterParams) returns(PTransmitRuntimeFilterResult);
 
+    // Storage Engine 3.0 poc only
+    rpc tablet_rowstore_scan(PTabletRowstoreScanRequest) returns(PTabletRowstoreScanResult);
+    rpc tablet_rowstore_multiget(PTabletRowstoreMultigetRequest) returns(PTabletRowstoreMultigetResult);
+    rpc tablet_rowstore_batchput(PTabletRowstoreBatchputRequest) returns(PTabletRowstoreBatchputResult);
+};

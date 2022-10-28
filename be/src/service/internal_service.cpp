@@ -30,6 +30,10 @@
 #include "exec/pipeline/fragment_executor.h"
 #include "gen_cpp/BackendService.h"
 #include "gutil/strings/substitute.h"
+#include "rocksdb/db.h"
+#include "rocksdb/filter_policy.h"
+#include "rocksdb/options.h"
+#include "rocksdb/table.h"
 #include "runtime/buffer_control_block.h"
 #include "runtime/data_stream_mgr.h"
 #include "runtime/exec_env.h"
@@ -39,6 +43,10 @@
 #include "runtime/routine_load/routine_load_task_executor.h"
 #include "runtime/runtime_filter_worker.h"
 #include "service/brpc.h"
+#include "storage/row_store.h"
+#include "storage/storage_engine.h"
+#include "storage/tablet.h"
+#include "storage/tablet_manager.h"
 #include "util/stopwatch.hpp"
 #include "util/thrift_util.h"
 #include "util/uid_util.h"
@@ -222,6 +230,93 @@ void PInternalServiceImplBase<T>::tablet_writer_add_segment(google::protobuf::Rp
                                                             google::protobuf::Closure* done) {
     ClosureGuard closure_guard(done);
     response->mutable_status()->set_status_code(TStatusCode::NOT_IMPLEMENTED_ERROR);
+}
+
+template <typename T>
+void PInternalServiceImplBase<T>::tablet_rowstore_scan(google::protobuf::RpcController* controller,
+                                                       const PTabletRowstoreScanRequest* request,
+                                                       PTabletRowstoreScanResult* response,
+                                                       google::protobuf::Closure* done) {
+    ClosureGuard closure_guard(done);
+    TabletSharedPtr tablet_ptr = StorageEngine::instance()->tablet_manager()->get_tablet(request->tablet_id());
+    if (tablet_ptr->is_rowmvcc_store()) {
+        _rowmvcc_tablet_rowstore_scan(std::move(tablet_ptr), request, response);
+    } else {
+        response->mutable_status()->set_status_code(TStatusCode::NOT_IMPLEMENTED_ERROR);
+    }
+}
+
+template <typename T>
+void PInternalServiceImplBase<T>::tablet_rowstore_multiget(google::protobuf::RpcController* controller,
+                                                           const PTabletRowstoreMultigetRequest* request,
+                                                           PTabletRowstoreMultigetResult* response,
+                                                           google::protobuf::Closure* done) {
+    ClosureGuard closure_guard(done);
+    TabletSharedPtr tablet_ptr = StorageEngine::instance()->tablet_manager()->get_tablet(request->tablet_id());
+    if (tablet_ptr->is_rowmvcc_store()) {
+        _rowmvcc_tablet_rowstore_multiget(std::move(tablet_ptr), request, response);
+    } else {
+        response->mutable_status()->set_status_code(TStatusCode::NOT_IMPLEMENTED_ERROR);
+    }
+}
+
+template <typename T>
+void PInternalServiceImplBase<T>::tablet_rowstore_batchput(google::protobuf::RpcController* controller,
+                                                           const PTabletRowstoreBatchputRequest* request,
+                                                           PTabletRowstoreBatchputResult* response,
+                                                           google::protobuf::Closure* done) {
+    ClosureGuard closure_guard(done);
+    TabletSharedPtr tablet_ptr = StorageEngine::instance()->tablet_manager()->get_tablet(request->tablet_id());
+    if (tablet_ptr->is_rowmvcc_store()) {
+        _rowmvcc_tablet_rowstore_batchput(std::move(tablet_ptr), request, response);
+    } else {
+        response->mutable_status()->set_status_code(TStatusCode::NOT_IMPLEMENTED_ERROR);
+    }
+}
+
+template <typename T>
+void PInternalServiceImplBase<T>::_rowmvcc_tablet_rowstore_scan(TabletSharedPtr tablet_ptr,
+                                                                const PTabletRowstoreScanRequest* request,
+                                                                PTabletRowstoreScanResult* response) {
+    Status s = tablet_ptr->row_store()->scan_ver(request->option().version(), response);
+    if (!s.ok()) {
+        response->mutable_status()->set_status_code(TStatusCode::INTERNAL_ERROR);
+    } else {
+        response->mutable_status()->set_status_code(TStatusCode::OK);
+    }
+}
+
+template <typename T>
+void PInternalServiceImplBase<T>::_rowmvcc_tablet_rowstore_multiget(TabletSharedPtr tablet_ptr,
+                                                                    const PTabletRowstoreMultigetRequest* request,
+                                                                    PTabletRowstoreMultigetResult* response) {
+    Status s = tablet_ptr->row_store()->multi_get_ver(request->option().version(), request, response);
+    if (!s.ok()) {
+        response->mutable_status()->set_status_code(TStatusCode::INTERNAL_ERROR);
+    } else {
+        response->mutable_status()->set_status_code(TStatusCode::OK);
+    }
+}
+
+template <typename T>
+void PInternalServiceImplBase<T>::_rowmvcc_tablet_rowstore_batchput(TabletSharedPtr tablet_ptr,
+                                                                    const PTabletRowstoreBatchputRequest* request,
+                                                                    PTabletRowstoreBatchputResult* response) {
+    rocksdb::WriteBatch wb;
+    auto rowstore = tablet_ptr->row_store();
+    rocksdb::ColumnFamilyHandle* cf_handle = rowstore->cf_handle(RS_MVCC_INDEX);
+    for (int i = 0; i < request->keys_size(); i++) {
+        wb.Put(cf_handle, request->keys(i), request->vals(i));
+    }
+    char buf[8];
+    SliceUniquePtr ptr = RowStore::ver_to_slice(request->option().version(), buf);
+    wb.AssignTimestamp(*ptr);
+    Status s = rowstore->batch_put(wb);
+    if (!s.ok()) {
+        response->mutable_status()->set_status_code(TStatusCode::INTERNAL_ERROR);
+    } else {
+        response->mutable_status()->set_status_code(TStatusCode::OK);
+    }
 }
 
 template <typename T>

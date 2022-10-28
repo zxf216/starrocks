@@ -3,6 +3,8 @@
 #include "storage/row_store.h"
 
 #include "column/chunk.h"
+#include "gen_cpp/doris_internal_service.pb.h"
+#include "gen_cpp/internal_service.pb.h"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/options.h"
@@ -172,6 +174,45 @@ void RowStore::multi_get_ver(const std::vector<std::string>& keys, const int64_t
     for (const auto& s : ss) {
         rets.push_back(to_status(s));
     }
+}
+
+Status RowStore::multi_get_ver(const int64_t version, const PTabletRowstoreMultigetRequest* request,
+                               PTabletRowstoreMultigetResult* response) {
+    CHECK(_db != nullptr) << "invalid db";
+    rocksdb::ColumnFamilyHandle* handle = _handles[RS_MVCC_INDEX];
+    std::vector<rocksdb::ColumnFamilyHandle*> handles(request->keys_size(), handle);
+    std::vector<rocksdb::Slice> key_slices(request->keys_size());
+    key_slices.reserve(request->keys_size());
+    for (const auto& key : request->keys()) {
+        key_slices.emplace_back(key);
+    }
+    rocksdb::ReadOptions read_option;
+    std::vector<std::string> values(request->keys_size());
+    char buf[8];
+    SliceUniquePtr ts_ptr = ver_to_slice(version, buf);
+    read_option.timestamp = ts_ptr.get();
+    std::vector<rocksdb::Status> ss = _db->MultiGet(read_option, handles, key_slices, &values, nullptr);
+    for (int i = 0; i < values.size(); i++) {
+        if (!ss[i].ok()) {
+            return to_status(ss[i]);
+        }
+        response->add_vals(values[i]);
+    }
+    return Status::OK();
+}
+
+Status RowStore::scan_ver(const int64_t version, PTabletRowstoreScanResult* response) {
+    CHECK(_db != nullptr) << "invalid db";
+    rocksdb::ReadOptions read_option;
+    char buf[8];
+    SliceUniquePtr ts_ptr = ver_to_slice(version, buf);
+    read_option.timestamp = ts_ptr.get();
+    rocksdb::Iterator* it = _db->NewIterator(read_option);
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+        response->add_keys(it->key().ToString());
+        response->add_vals(it->value().ToString());
+    }
+    return to_status(it->status());
 }
 
 Status RowStore::get_chunk_ver(const std::vector<std::string>& keys, const vectorized::Schema& schema,

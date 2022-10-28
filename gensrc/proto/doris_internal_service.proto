@@ -21,7 +21,7 @@
 
 // NOTE(XXX): DEPRECATED, just use to compatiple with old version.
 // Make system can grayscale upgrade
-syntax="proto2";
+syntax = "proto2";
 
 import "internal_service.proto";
 
@@ -31,22 +31,32 @@ option java_package = "com.starrocks.proto";
 option cc_generic_services = true;
 
 service PBackendService {
-    rpc transmit_data(starrocks.PTransmitDataParams) returns (starrocks.PTransmitDataResult);
-    rpc exec_plan_fragment(starrocks.PExecPlanFragmentRequest) returns (starrocks.PExecPlanFragmentResult);
-    rpc exec_batch_plan_fragments(starrocks.PExecBatchPlanFragmentsRequest) returns (starrocks.PExecBatchPlanFragmentsResult);
-    rpc cancel_plan_fragment(starrocks.PCancelPlanFragmentRequest) returns (starrocks.PCancelPlanFragmentResult);
-    rpc fetch_data(starrocks.PFetchDataRequest) returns (starrocks.PFetchDataResult);
-    rpc tablet_writer_open(starrocks.PTabletWriterOpenRequest) returns (starrocks.PTabletWriterOpenResult);
-    rpc tablet_writer_add_batch(starrocks.PTabletWriterAddBatchRequest) returns (starrocks.PTabletWriterAddBatchResult);
-    rpc tablet_writer_cancel(starrocks.PTabletWriterCancelRequest) returns (starrocks.PTabletWriterCancelResult);
-    rpc trigger_profile_report(starrocks.PTriggerProfileReportRequest) returns (starrocks.PTriggerProfileReportResult);
-    rpc get_info(starrocks.PProxyRequest) returns (starrocks.PProxyResult);
-    rpc get_pulsar_info(starrocks.PPulsarProxyRequest) returns (starrocks.PPulsarProxyResult);
+    rpc transmit_data(starrocks.PTransmitDataParams) returns(starrocks.PTransmitDataResult);
+    rpc exec_plan_fragment(starrocks.PExecPlanFragmentRequest) returns(starrocks.PExecPlanFragmentResult);
+    rpc exec_batch_plan_fragments(starrocks.PExecBatchPlanFragmentsRequest)
+            returns(starrocks.PExecBatchPlanFragmentsResult);
+    rpc cancel_plan_fragment(starrocks.PCancelPlanFragmentRequest) returns(starrocks.PCancelPlanFragmentResult);
+    rpc fetch_data(starrocks.PFetchDataRequest) returns(starrocks.PFetchDataResult);
+    rpc tablet_writer_open(starrocks.PTabletWriterOpenRequest) returns(starrocks.PTabletWriterOpenResult);
+    rpc tablet_writer_add_batch(starrocks.PTabletWriterAddBatchRequest) returns(starrocks.PTabletWriterAddBatchResult);
+    rpc tablet_writer_cancel(starrocks.PTabletWriterCancelRequest) returns(starrocks.PTabletWriterCancelResult);
+    rpc trigger_profile_report(starrocks.PTriggerProfileReportRequest) returns(starrocks.PTriggerProfileReportResult);
+    rpc get_info(starrocks.PProxyRequest) returns(starrocks.PProxyResult);
+    rpc get_pulsar_info(starrocks.PPulsarProxyRequest) returns(starrocks.PPulsarProxyResult);
 
     // Transmit vectorized data between backends
-    rpc transmit_chunk(starrocks.PTransmitChunkParams) returns (starrocks.PTransmitChunkResult);
-    rpc tablet_writer_add_chunk(starrocks.PTabletWriterAddChunkRequest) returns (starrocks.PTabletWriterAddBatchResult);
-    rpc tablet_writer_add_chunks(starrocks.PTabletWriterAddChunksRequest) returns (starrocks.PTabletWriterAddBatchResult);
-    rpc tablet_writer_add_segment(starrocks.PTabletWriterAddSegmentRequest) returns (starrocks.PTabletWriterAddSegmentResult);
-    rpc transmit_runtime_filter(starrocks.PTransmitRuntimeFilterParams) returns (starrocks.PTransmitRuntimeFilterResult);
+    rpc transmit_chunk(starrocks.PTransmitChunkParams) returns(starrocks.PTransmitChunkResult);
+    rpc tablet_writer_add_chunk(starrocks.PTabletWriterAddChunkRequest) returns(starrocks.PTabletWriterAddBatchResult);
+    rpc tablet_writer_add_chunks(starrocks.PTabletWriterAddChunksRequest)
+            returns(starrocks.PTabletWriterAddBatchResult);
+    rpc tablet_writer_add_segment(starrocks.PTabletWriterAddSegmentRequest)
+            returns(starrocks.PTabletWriterAddSegmentResult);
+    rpc transmit_runtime_filter(starrocks.PTransmitRuntimeFilterParams) returns(starrocks.PTransmitRuntimeFilterResult);
+
+    // Storage Engine 3.0 poc only
+    rpc tablet_rowstore_scan(starrocks.PTabletRowstoreScanRequest) returns(starrocks.PTabletRowstoreScanResult);
+    rpc tablet_rowstore_multiget(starrocks.PTabletRowstoreMultigetRequest)
+            returns(starrocks.PTabletRowstoreMultigetResult);
+    rpc tablet_rowstore_batchput(starrocks.PTabletRowstoreBatchputRequest)
+            returns(starrocks.PTabletRowstoreBatchputResult);
 };

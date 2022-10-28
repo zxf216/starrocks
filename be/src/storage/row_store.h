@@ -18,6 +18,9 @@ class ColumnFamilyHandle;
 } // namespace rocksdb
 
 namespace starrocks {
+class PTabletRowstoreScanResult;
+class PTabletRowstoreMultigetRequest;
+class PTabletRowstoreMultigetResult;
 
 namespace vectorized {
 class Chunk;
@@ -55,6 +58,9 @@ public:
                        std::vector<Status>& rets);
     Status get_chunk_ver(const std::vector<std::string>& keys, const vectorized::Schema& schema, const int64_t version,
                          vectorized::Chunk* chunk);
+    Status scan_ver(const int64_t version, PTabletRowstoreScanResult* response);
+    Status multi_get_ver(const int64_t version, const PTabletRowstoreMultigetRequest* request,
+                         PTabletRowstoreMultigetResult* response);
 
     ///  without mvcc
     // write key value pairs to rowstore

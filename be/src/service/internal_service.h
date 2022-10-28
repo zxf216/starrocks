@@ -39,6 +39,7 @@ namespace starrocks {
 
 class TExecPlanFragmentParams;
 class ExecEnv;
+class Tablet;
 
 template <typename T>
 class PInternalServiceImplBase : public T {
@@ -102,6 +103,17 @@ public:
     void get_pulsar_info(google::protobuf::RpcController* controller, const PPulsarProxyRequest* request,
                          PPulsarProxyResult* response, google::protobuf::Closure* done) override;
 
+    void tablet_rowstore_scan(google::protobuf::RpcController* controller, const PTabletRowstoreScanRequest* request,
+                              PTabletRowstoreScanResult* response, google::protobuf::Closure* done) override;
+
+    void tablet_rowstore_multiget(google::protobuf::RpcController* controller,
+                                  const PTabletRowstoreMultigetRequest* request,
+                                  PTabletRowstoreMultigetResult* response, google::protobuf::Closure* done) override;
+
+    void tablet_rowstore_batchput(google::protobuf::RpcController* controller,
+                                  const PTabletRowstoreBatchputRequest* request,
+                                  PTabletRowstoreBatchputResult* response, google::protobuf::Closure* done) override;
+
 private:
     void _get_info_impl(const PProxyRequest* request, PProxyResult* response,
                         GenericCountDownLatch<bthread::Mutex, bthread::ConditionVariable>* latch, int timeout_ms);
@@ -115,6 +127,17 @@ private:
     Status _exec_plan_fragment_by_pipeline(const TExecPlanFragmentParams& t_common_request,
                                            const TExecPlanFragmentParams& t_unique_request);
     Status _exec_plan_fragment_by_non_pipeline(const TExecPlanFragmentParams& t_request);
+
+    void _rowmvcc_tablet_rowstore_scan(std::shared_ptr<Tablet> tablet_ptr, const PTabletRowstoreScanRequest* request,
+                                       PTabletRowstoreScanResult* response);
+
+    void _rowmvcc_tablet_rowstore_multiget(std::shared_ptr<Tablet> tablet_ptr,
+                                           const PTabletRowstoreMultigetRequest* request,
+                                           PTabletRowstoreMultigetResult* response);
+
+    void _rowmvcc_tablet_rowstore_batchput(std::shared_ptr<Tablet> tablet_ptr,
+                                           const PTabletRowstoreBatchputRequest* request,
+                                           PTabletRowstoreBatchputResult* response);
 
 protected:
     ExecEnv* _exec_env;
