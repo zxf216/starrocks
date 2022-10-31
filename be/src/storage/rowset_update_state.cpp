@@ -105,7 +105,7 @@ Status RowsetUpdateState::_do_load(Tablet* tablet, Rowset* rowset) {
         _rowstore_chunk = ChunkHelper::new_chunk(all_schema, 4096);
     }
     // only hold pkey, so can use larger chunk size
-    auto chunk_shared_ptr = ChunkHelper::new_chunk(pkey_schema, 4096);
+    auto chunk_shared_ptr = ChunkHelper::new_chunk(*select_schema, 4096);
     auto chunk = chunk_shared_ptr.get();
     for (size_t i = 0; i < itrs.size(); i++) {
         auto& dest = _upserts[i];
