@@ -43,6 +43,9 @@ public:
                                                   vectorized::BinaryColumn& dest);
     static Status kvs_to_chunk(const std::vector<std::string>& keys, const std::vector<std::string>& values,
                                const vectorized::Schema& schema, vectorized::Chunk* dest);
+    static Status kvs_to_chunk(const std::vector<std::string>& keys, const std::vector<std::string>& values,
+                               const vectorized::Schema& schema, const std::vector<uint32_t>& read_column_ids,
+                               std::vector<std::unique_ptr<vectorized::Column>>& dest);
     static void combine_key_with_ver(std::string& key, const int8_t op, const int64_t version);
     static Status split_key_with_ver(const std::string& ckey, std::string& key, int8_t& op, int64_t& version);
     static void pk_column_to_keys(vectorized::Schema& pkey_schema, vectorized::Column* column,

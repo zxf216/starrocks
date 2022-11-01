@@ -277,16 +277,17 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
                 auto chunk = ChunkHelper::new_chunk(schema, 1024);
                 if (tablet->is_row_store()) {
                     RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], tablet_schema, schema,
-                                                                   chunk.get()));
+                                                                   read_column_ids,
+                                                                   _partial_update_states[i].write_columns));
                 } else {
                     RETURN_IF_ERROR(tablet->row_store()->get_chunk_ver(_rowstore_upsert_keys[i], tablet_schema, schema,
                                                                        _read_version.major(), chunk.get()));
+                    for (size_t col_idx = 0; col_idx < read_column_ids.size(); col_idx++) {
+                        _partial_update_states[i].write_columns[col_idx]->append(
+                                *(chunk->get_column_by_id(read_column_ids[col_idx])));
+                    }
                 }
                 total_rows += _partial_update_states[i].src_rss_rowids.size();
-                for (size_t col_idx = 0; col_idx < read_column_ids.size(); col_idx++) {
-                    _partial_update_states[i].write_columns[col_idx]->append(
-                            *(chunk->get_column_by_id(read_column_ids[col_idx])));
-                }
             }
         }
     } else {

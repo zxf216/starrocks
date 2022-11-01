@@ -543,6 +543,109 @@ Status RowStoreEncoder::kvs_to_chunk(const std::vector<std::string>& keys, const
     return Status::OK();
 }
 
+Status RowStoreEncoder::kvs_to_chunk(const std::vector<std::string>& keys, const std::vector<std::string>& values,
+                                     const vectorized::Schema& schema, const std::vector<uint32_t>& read_column_ids,
+                                     std::vector<std::unique_ptr<vectorized::Column>>& dest) {
+    CHECK(keys.size() == values.size()) << "key size should equal to value size";
+    CHECK(read_column_ids.size() == dest.size()) << "invalid read column";
+    for (int i = 0; i < keys.size(); i++) {
+        Slice s = Slice(keys[i]);
+        size_t col_index = 0;
+        for (int j = 0; j < schema.num_fields(); j++) {
+            if (j == schema.num_key_fields()) {
+                s = Slice(values[i]);
+            }
+            //auto& column = *(dest->get_column_by_index(j));
+            switch (schema.field(j)->type()->type()) {
+            case OLAP_FIELD_TYPE_BOOL: {
+                //auto& tc = down_cast<vectorized::UInt8Column&>(column);
+                uint8_t v;
+                decode_integral(&s, &v);
+                //tc.append((int8_t)v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_TINYINT: {
+                //auto& tc = down_cast<vectorized::Int8Column&>(column);
+                int8_t v;
+                decode_integral(&s, &v);
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_SMALLINT: {
+                //auto& tc = down_cast<vectorized::Int16Column&>(column);
+                int16_t v;
+                decode_integral(&s, &v);
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_INT: {
+                //auto& tc = down_cast<vectorized::Int32Column&>(column);
+                int32_t v;
+                decode_integral(&s, &v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_BIGINT: {
+                //auto& tc = down_cast<vectorized::Int64Column&>(column);
+                int64_t v;
+                decode_integral(&s, &v);
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_LARGEINT: {
+                //auto& tc = down_cast<vectorized::Int128Column&>(column);
+                int128_t v;
+                decode_integral(&s, &v);
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_VARCHAR: {
+                //auto& tc = down_cast<vectorized::BinaryColumn&>(column);
+                string v;
+                RETURN_IF_ERROR(
+                        decode_slice(&s, &v, (j == schema.num_fields() - 1) || (j == schema.num_key_fields() - 1)));
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(Slice(v)));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_DATE_V2: {
+                //auto& tc = down_cast<vectorized::DateColumn&>(column);
+                vectorized::DateValue v;
+                decode_integral(&s, &v._julian);
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            case OLAP_FIELD_TYPE_DATETIME: {
+                //auto& tc = down_cast<vectorized::TimestampColumn&>(column);
+                vectorized::TimestampValue v;
+                decode_integral(&s, &v._timestamp);
+                //tc.append(v);
+                if (j == read_column_ids[col_index]) {
+                    dest[col_index++].get()->append_datum(vectorized::Datum(v));
+                }
+            } break;
+            default:
+                CHECK(false) << "type not supported for primary key encoding";
+            }
+        }
+    }
+    return Status::OK();
+}
+
 void RowStoreEncoder::combine_key_with_ver(std::string& key, const int8_t op, const int64_t version) {
     uint32_t key_len = key.length();
     encode_integral(encode_version(op, version), &key);
