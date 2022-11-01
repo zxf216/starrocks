@@ -21,6 +21,7 @@ namespace starrocks {
 class PTabletRowstoreScanResult;
 class PTabletRowstoreMultigetRequest;
 class PTabletRowstoreMultigetResult;
+class TabletSchema;
 
 namespace vectorized {
 class Chunk;
@@ -56,8 +57,8 @@ public:
     // write key value pairs to rowstore with version
     void multi_get_ver(const std::vector<std::string>& keys, const int64_t version, std::vector<std::string>& values,
                        std::vector<Status>& rets);
-    Status get_chunk_ver(const std::vector<std::string>& keys, const vectorized::Schema& schema, const int64_t version,
-                         vectorized::Chunk* chunk);
+    Status get_chunk_ver(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
+                         const vectorized::Schema& schema, const int64_t version, vectorized::Chunk* chunk);
     Status scan_ver(const int64_t version, PTabletRowstoreScanResult* response);
     Status multi_get_ver(const int64_t version, const PTabletRowstoreMultigetRequest* request,
                          PTabletRowstoreMultigetResult* response);
@@ -67,7 +68,12 @@ public:
 
     void multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values, std::vector<Status>& rets);
 
-    Status get_chunk(const std::vector<std::string>& keys, const vectorized::Schema& schema, vectorized::Chunk* chunk);
+    Status get_chunk(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
+                     const vectorized::Schema& schema, vectorized::Chunk* chunk);
+
+private:
+    Status _build_default_value(const TabletSchema& tablet_schema, const vectorized::Schema& schema,
+                                std::string& default_value);
 
 private:
     std::string _db_path;

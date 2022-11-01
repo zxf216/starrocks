@@ -276,9 +276,10 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
             for (size_t i = 0; i < num_segments; i++) {
                 auto chunk = ChunkHelper::new_chunk(schema, 1024);
                 if (tablet->is_row_store()) {
-                    RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], schema, chunk.get()));
+                    RETURN_IF_ERROR(tablet->row_store()->get_chunk(_rowstore_upsert_keys[i], tablet_schema, schema,
+                                                                   chunk.get()));
                 } else {
-                    RETURN_IF_ERROR(tablet->row_store()->get_chunk_ver(_rowstore_upsert_keys[i], schema,
+                    RETURN_IF_ERROR(tablet->row_store()->get_chunk_ver(_rowstore_upsert_keys[i], tablet_schema, schema,
                                                                        _read_version.major(), chunk.get()));
                 }
                 total_rows += _partial_update_states[i].src_rss_rowids.size();
@@ -410,10 +411,11 @@ Status RowsetUpdateState::_check_and_resolve_conflict(Tablet* tablet, Rowset* ro
                 auto schema = ChunkHelper::convert_schema_to_format_v2(tablet->tablet_schema());
                 auto chunk = ChunkHelper::new_chunk(schema, 1024);
                 if (tablet->is_row_store()) {
-                    RETURN_IF_ERROR(tablet->row_store()->get_chunk(conflict_pks, schema, chunk.get()));
+                    RETURN_IF_ERROR(
+                            tablet->row_store()->get_chunk(conflict_pks, tablet->tablet_schema(), schema, chunk.get()));
                 } else {
-                    RETURN_IF_ERROR(tablet->row_store()->get_chunk_ver(conflict_pks, schema, _read_version.major(),
-                                                                       chunk.get()));
+                    RETURN_IF_ERROR(tablet->row_store()->get_chunk_ver(conflict_pks, tablet->tablet_schema(), schema,
+                                                                       _read_version.major(), chunk.get()));
                 }
                 for (size_t col_idx = 0; col_idx < read_column_ids.size(); col_idx++) {
                     _partial_update_states[i].write_columns[col_idx]->update_rows(
@@ -588,7 +590,6 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
     }
     const auto& tablet_schema = tablet->tablet_schema();
     std::vector<std::string> keys, values;
-    std::string debug_str = "read_column: ";
 
     if (rowset->rowset_meta()->get_meta_pb().has_txn_meta()) {
         // partial update, need fill up column that not exist in segment file
@@ -601,7 +602,6 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
         for (uint32_t i = 0; i < tablet_schema.num_columns(); i++) {
             if (update_columns_set.find(i) == update_columns_set.end()) {
                 read_column_ids.push_back(i);
-                debug_str += std::to_string(i) + ", ";
             }
         }
         // fill rowstore_chunk with read columns
@@ -611,14 +611,12 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
                 _rowstore_chunk->get_column_by_id(read_column_ids[j])->swap_column(*tmp_col);
             }
         }
-        debug_str += " chunk: " + _rowstore_chunk->debug_columns();
     }
     // change chunk to key value pairs
     RowStoreEncoder::chunk_to_keys(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0,
                                    _rowstore_chunk->num_rows(), keys);
     RowStoreEncoder::chunk_to_values(*_rowstore_chunk->schema().get(), *_rowstore_chunk.get(), 0,
                                      _rowstore_chunk->num_rows(), values);
-    debug_str += "key_size: " + std::to_string(keys.size()) + " val_size: " + std::to_string(values.size());
     std::unique_ptr<rocksdb::WriteBatch> wb_ptr;
     rocksdb::ColumnFamilyHandle* cf_handle;
     if (tablet->is_row_store()) {
@@ -642,7 +640,6 @@ Status RowsetUpdateState::apply_to_rowstore(Tablet* tablet, Rowset* rowset, RowS
         char buf[8];
         SliceUniquePtr ptr = RowStore::ver_to_slice(version, buf);
         wb_ptr->AssignTimestamp(*ptr);
-        debug_str += " version " + std::to_string(version);
     }
 
     return rowstore->batch_put(*wb_ptr);

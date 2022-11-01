@@ -11,9 +11,12 @@
 #include "rocksdb/slice.h"
 #include "rocksdb/slice_transform.h"
 #include "rocksdb/table.h"
+#include "storage/chunk_helper.h"
 #include "storage/olap_define.h"
 #include "storage/rocksdb_status_adapter.h"
 #include "storage/row_store_encoder.h"
+#include "storage/rowset/default_value_column_iterator.h"
+#include "storage/tablet_schema.h"
 
 using rocksdb::DB;
 using rocksdb::Options;
@@ -215,14 +218,23 @@ Status RowStore::scan_ver(const int64_t version, PTabletRowstoreScanResult* resp
     return to_status(it->status());
 }
 
-Status RowStore::get_chunk_ver(const std::vector<std::string>& keys, const vectorized::Schema& schema,
-                               const int64_t version, vectorized::Chunk* chunk) {
+Status RowStore::get_chunk_ver(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
+                               const vectorized::Schema& schema, const int64_t version, vectorized::Chunk* chunk) {
     std::vector<std::string> values;
     std::vector<Status> rets;
+    std::string default_value;
     multi_get_ver(keys, version, values, rets);
-    for (const auto& s : rets) {
-        if (!s.ok()) {
-            LOG(INFO) << "multi_get_ver: err: " << s.get_error_msg() << " version " << version;
+    for (int i = 0; i < keys.size(); i++) {
+        auto& s = rets[i];
+        if (s.is_not_found()) {
+            // use default value
+            if (default_value.empty()) {
+                if (!_build_default_value(tablet_schema, schema, default_value).ok()) {
+                    return s;
+                }
+            }
+            values[i] = default_value;
+        } else if (!s.ok()) {
             return s;
         }
     }
@@ -255,13 +267,48 @@ void RowStore::multi_get(const std::vector<std::string>& keys, std::vector<std::
     }
 }
 
-Status RowStore::get_chunk(const std::vector<std::string>& keys, const vectorized::Schema& schema,
-                           vectorized::Chunk* chunk) {
+Status RowStore::_build_default_value(const TabletSchema& tablet_schema, const vectorized::Schema& schema,
+                                      std::string& default_value) {
+    auto chunk = ChunkHelper::new_chunk(schema, 1);
+    for (int i = 0; i < tablet_schema.num_columns(); i++) {
+        if (i < schema.num_key_fields()) continue;
+        const auto& col = tablet_schema.column(i);
+        if (!col.has_default_value()) {
+            return Status::NotFound("_build_default_value failed");
+        } else {
+            const TypeInfoPtr& type_info = get_type_info(col);
+            std::unique_ptr<DefaultValueColumnIterator> default_value_iter =
+                    std::make_unique<DefaultValueColumnIterator>(col.has_default_value(), col.default_value(),
+                                                                 col.is_nullable(), type_info, col.length(), 1);
+            ColumnIteratorOptions iter_opts;
+            RETURN_IF_ERROR(default_value_iter->init(iter_opts));
+            size_t sz = 1;
+            default_value_iter->next_batch(&sz, chunk->get_column_by_index(i).get());
+        }
+    }
+    std::vector<std::string> tmp_strs;
+    RowStoreEncoder::chunk_to_values(schema, *chunk, 0, 1, tmp_strs);
+    default_value.swap(tmp_strs[0]);
+    return Status::OK();
+}
+
+Status RowStore::get_chunk(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
+                           const vectorized::Schema& schema, vectorized::Chunk* chunk) {
     std::vector<std::string> values;
     std::vector<Status> rets;
+    std::string default_value;
     multi_get(keys, values, rets);
-    for (const auto& s : rets) {
-        if (!s.ok()) {
+    for (int i = 0; i < keys.size(); i++) {
+        auto& s = rets[i];
+        if (s.is_not_found()) {
+            // use default value
+            if (default_value.empty()) {
+                if (!_build_default_value(tablet_schema, schema, default_value).ok()) {
+                    return s;
+                }
+            }
+            values[i] = default_value;
+        } else if (!s.ok()) {
             return s;
         }
     }
