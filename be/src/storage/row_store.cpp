@@ -324,29 +324,4 @@ Status RowStore::get_chunk(const std::vector<std::string>& keys, const TabletSch
     return Status::OK();
 }
 
-Status RowStore::get_chunk(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
-                           const vectorized::Schema& schema, std::vector<uint32_t>& read_column_ids,
-                           std::vector<std::unique_ptr<vectorized::Column>>& dest) {
-    std::vector<std::string> values;
-    std::vector<Status> rets;
-    std::string default_value;
-    multi_get(keys, values, rets);
-    for (int i = 0; i < keys.size(); i++) {
-        auto& s = rets[i];
-        if (s.is_not_found()) {
-            // use default value
-            if (default_value.empty()) {
-                if (!_build_default_value(tablet_schema, schema, default_value).ok()) {
-                    return s;
-                }
-            }
-            values[i] = default_value;
-        } else if (!s.ok()) {
-            return s;
-        }
-    }
-    RowStoreEncoder::kvs_to_chunk(keys, values, schema, read_column_ids, dest);
-    return Status::OK();
-}
-
 } // namespace starrocks

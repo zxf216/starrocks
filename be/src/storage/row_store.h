@@ -26,7 +26,6 @@ class TabletSchema;
 namespace vectorized {
 class Chunk;
 class Schema;
-class Column;
 } // namespace vectorized
 
 using ColumnFamilyHandle = rocksdb::ColumnFamilyHandle;
@@ -71,9 +70,6 @@ public:
 
     Status get_chunk(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
                      const vectorized::Schema& schema, vectorized::Chunk* chunk);
-    Status get_chunk(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
-                     const vectorized::Schema& schema, std::vector<uint32_t>& read_column_ids,
-                     std::vector<std::unique_ptr<vectorized::Column>>& dest);
 
 private:
     Status _build_default_value(const TabletSchema& tablet_schema, const vectorized::Schema& schema,
