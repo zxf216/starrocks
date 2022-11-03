@@ -111,7 +111,7 @@ Status RowStore::init() {
     std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(1 << 30); // 1GB
     rocksdb::BlockBasedTableOptions table_options;
     table_options.block_cache = cache;
-    table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
+    table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));
     Options options;
     options.IncreaseParallelism();
     options.create_missing_column_families = true;
