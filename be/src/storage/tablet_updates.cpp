@@ -523,6 +523,9 @@ Status TabletUpdates::rowset_commit(int64_t version, const RowsetSharedPtr& rows
     if (!st.ok()) {
         LOG(WARNING) << "rowset commit failed tablet:" << _tablet.tablet_id() << " version:" << version
                      << " txn_id: " << rowset->txn_id() << " pending:" << _pending_commits.size() << " msg:" << st;
+    } else {
+        std::unique_lock<std::mutex> ul(_lock);
+        _wait_for_version(EditVersion(version, 0), 60000, ul);
     }
     return st;
 }
@@ -2984,6 +2987,7 @@ Status TabletUpdates::get_column_values(std::vector<uint32_t>& column_ids, bool 
         ColumnIteratorOptions iter_opts;
         OlapReaderStatistics stats;
         iter_opts.stats = &stats;
+        iter_opts.use_page_cache = true;
         ASSIGN_OR_RETURN(auto read_file, fs->new_random_access_file((*segment)->file_name()));
         iter_opts.read_file = read_file.get();
         if (full_row_column) {

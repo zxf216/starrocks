@@ -307,6 +307,7 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
             }
         }
     }
+    int64_t t_scan = MonotonicMillis();
     if (tablet->is_column_with_row_store()) {
         _partial_update_value_column_ids.clear();
         for (uint32_t cid : update_column_ids) {
@@ -351,9 +352,9 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
 
     LOG(INFO) << Substitute(
             "prepare PartialUpdateState tablet:$0 read_version:$1 #segment:$2 #row:$3(#non-default:$4) #column:$5 "
-            "time:$6ms(index:$7/value:$8)",
+            "time:$6ms(index:$7/value:$8/scan:$9)",
             _tablet_id, _read_version.to_string(), num_segments, total_rows, total_nondefault_rows, read_columns.size(),
-            t_end - t_start, t_read_values - t_read_index, t_end - t_read_values);
+            t_end - t_start, t_read_values - t_read_index, t_end - t_read_values, t_end - t_scan);
     return Status::OK();
 }
 

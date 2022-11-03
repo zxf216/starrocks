@@ -672,7 +672,7 @@ std::unique_ptr<vectorized::Schema> create_binary_schema() {
     fd->set_is_key(true);
     fd->set_aggregate_method(OLAP_FIELD_AGGREGATION_NONE);
     fields.emplace_back(fd);
-    return std::unique_ptr<vectorized::Schema>(new vectorized::Schema(std::move(fields), KeysType::PRIMARY_KEYS));
+    return std::unique_ptr<vectorized::Schema>(new vectorized::Schema(std::move(fields), KeysType::PRIMARY_KEYS, {}));
 }
 
 void RowStoreEncoder::pk_column_to_keys(vectorized::Schema& pkey_schema, vectorized::Column* column,
