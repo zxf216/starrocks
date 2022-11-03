@@ -108,10 +108,15 @@ RowStore::~RowStore() {
 }
 
 Status RowStore::init() {
+    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(1 << 30); // 1GB
+    rocksdb::BlockBasedTableOptions table_options;
+    table_options.block_cache = cache;
+    table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, false));
     Options options;
     options.IncreaseParallelism();
     options.create_missing_column_families = true;
     options.create_if_missing = true;
+    //options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
     /*
     if (support_mvcc) {
         // use prefix filter
@@ -124,11 +129,14 @@ Status RowStore::init() {
         table_options.whole_key_filtering = false;
         options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
     }*/
+
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_descs(RS_NUM_COLUMN_FAMILY_INDEX);
     cf_descs[0].name = ROWSTORE_NO_MVCC_CF;
+    cf_descs[0].options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
     cf_descs[1].name = ROWSTORE_MVCC_CF;
     static ComparatorWithU64TsImpl comp_with_u64_ts;
     cf_descs[1].options.comparator = &comp_with_u64_ts;
+    cf_descs[1].options.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
     static_assert(RS_NUM_COLUMN_FAMILY_INDEX == 2);
 
     // open rocksdb
