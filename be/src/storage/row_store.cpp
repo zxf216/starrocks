@@ -342,7 +342,7 @@ Status RowStore::get_chunk(const std::vector<std::string>& keys, const TabletSch
     std::vector<std::string> values;
     std::vector<Status> rets;
     std::string default_value;
-    parell_multi_get(keys, values, rets);
+    multi_get(keys, values, rets);
     for (int i = 0; i < keys.size(); i++) {
         auto& s = rets[i];
         if (s.is_not_found()) {
