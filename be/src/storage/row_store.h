@@ -67,6 +67,8 @@ public:
     // write key value pairs to rowstore
 
     void multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values, std::vector<Status>& rets);
+    void parell_multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values,
+                          std::vector<Status>& rets);
 
     Status get_chunk(const std::vector<std::string>& keys, const TabletSchema& tablet_schema,
                      const vectorized::Schema& schema, vectorized::Chunk* chunk);

@@ -275,6 +275,43 @@ void RowStore::multi_get(const std::vector<std::string>& keys, std::vector<std::
     }
 }
 
+void RowStore::parell_multi_get(const std::vector<std::string>& keys, std::vector<std::string>& values,
+                                std::vector<Status>& rets) {
+    CHECK(_db != nullptr) << "invalid db";
+    std::vector<std::thread> workers;
+    std::vector<std::vector<std::string>> val_vec;
+    std::vector<std::vector<Status>> status_vec;
+    rocksdb::ColumnFamilyHandle* handle = _handles[RS_NO_MVCC_INDEX];
+    std::vector<rocksdb::ColumnFamilyHandle*> handles(keys.size(), handle);
+    const int batch_num = 200;
+    val_vec.resize(keys.size() / batch_num + 1);
+    status_vec.resize(keys.size() / batch_num + 1);
+    for (int i = 0; i * batch_num < keys.size(); i++) {
+        workers.emplace_back(
+                [&](int index) {
+                    int s = index * batch_num;
+                    int e = ((index + 1) * batch_num - 1) >= keys.size() ? (keys.size() - 1)
+                                                                         : ((index + 1) * batch_num - 1);
+                    std::vector<rocksdb::Slice> key_slices;
+                    key_slices.reserve(e - s + 1);
+                    for (int j = s; j <= e; j++) {
+                        key_slices.emplace_back(keys[j]);
+                    }
+                    std::vector<rocksdb::Status> ss =
+                            _db->MultiGet(rocksdb::ReadOptions(), handles, key_slices, &val_vec[index], nullptr);
+                    for (auto& each : ss) {
+                        status_vec[index].push_back(to_status(each));
+                    }
+                },
+                i);
+    }
+    for (int i = 0; i < workers.size(); i++) {
+        workers[i].join();
+        values.insert(values.end(), val_vec[i].begin(), val_vec[i].end());
+        rets.insert(rets.end(), status_vec[i].begin(), status_vec[i].end());
+    }
+}
+
 Status RowStore::_build_default_value(const TabletSchema& tablet_schema, const vectorized::Schema& schema,
                                       std::string& default_value) {
     auto chunk = ChunkHelper::new_chunk(schema, 1);
@@ -305,7 +342,7 @@ Status RowStore::get_chunk(const std::vector<std::string>& keys, const TabletSch
     std::vector<std::string> values;
     std::vector<Status> rets;
     std::string default_value;
-    multi_get(keys, values, rets);
+    parell_multi_get(keys, values, rets);
     for (int i = 0; i < keys.size(); i++) {
         auto& s = rets[i];
         if (s.is_not_found()) {

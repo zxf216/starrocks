@@ -353,7 +353,7 @@ Status RowsetUpdateState::_prepare_partial_update_states(Tablet* tablet, Rowset*
             "prepare PartialUpdateState tablet:$0 read_version:$1 #segment:$2 #row:$3(#non-default:$4) #column:$5 "
             "time:$6ms(index:$7/value:$8/scan:$9)",
             _tablet_id, _read_version.to_string(), num_segments, total_rows, total_nondefault_rows, read_columns.size(),
-            t_end - t_start, t_read_values - t_read_index, t_end - t_read_values, t_end - t_scan);
+            t_end - t_start, t_read_values - t_read_index, t_scan - t_read_values, t_end - t_scan);
     return Status::OK();
 }
 
