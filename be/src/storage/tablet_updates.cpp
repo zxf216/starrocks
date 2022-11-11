@@ -8,6 +8,7 @@
 #include "common/status.h"
 #include "common/tracer.h"
 #include "gen_cpp/MasterService_types.h"
+#include "gen_cpp/internal_service.pb.h"
 #include "gen_cpp/olap_file.pb.h"
 #include "gutil/stl_util.h"
 #include "gutil/strings/join.h"
@@ -2203,7 +2204,7 @@ Status TabletUpdates::get_applied_rowsets(int64_t version, std::vector<RowsetSha
             rowsets->reserve(edit_version_info->rowsets.size());
             std::lock_guard<std::mutex> lg(_rowsets_lock);
             for (uint32_t rsid : edit_version_info->rowsets) {
-                auto itr = _rowsets.find(rsid);
+                auto itr = ..find(rsid);
                 DCHECK(itr != _rowsets.end());
                 if (itr != _rowsets.end()) {
                     rowsets->emplace_back(itr->second);
@@ -3161,6 +3162,16 @@ Status TabletUpdates::get_rowsets_for_incremental_snapshot(const std::vector<int
                                      _debug_version_info(true), JoinInts(missing_version_ranges, ","),
                                      JoinInts(versions, ","));
     return Status::OK();
+}
+
+Status TabletUpdates::multi_get(const int64_t version, const PTabletRowstoreMultigetRequest* request,
+                                PTabletRowstoreMultigetResult* response) {
+    std::vector<RowsetSharedPtr> rowsets;
+    RETURN_IF_ERROR(get_applied_rowsets(version, &rowsets));
+    std::unordered_map<uint64_t, uint64_t> key_idxes;
+    for (const auto&k : request->keys()) {
+
+    }
 }
 
 } // namespace starrocks

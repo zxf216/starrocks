@@ -108,7 +108,7 @@ RowStore::~RowStore() {
 }
 
 Status RowStore::init() {
-    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(8UL << 30); // 1GB
+    std::shared_ptr<rocksdb::Cache> cache = rocksdb::NewLRUCache(8UL << 30); // 8GB
     rocksdb::BlockBasedTableOptions table_options;
     table_options.block_cache = cache;
     table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(15, false));

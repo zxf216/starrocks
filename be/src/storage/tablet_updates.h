@@ -28,6 +28,8 @@ class RowsetReadOptions;
 class SnapshotMeta;
 class Tablet;
 class TTabletInfo;
+class PTabletRowstoreMultigetRequest;
+class PTabletRowstoreMultigetResult;
 
 namespace vectorized {
 class ChunkIterator;
@@ -228,6 +230,9 @@ public:
 
     Status get_rowsets_for_incremental_snapshot(const std::vector<int64_t>& missing_version_ranges,
                                                 std::vector<RowsetSharedPtr>& rowsets);
+
+    Status multi_get(const int64_t version, const PTabletRowstoreMultigetRequest* request,
+                     PTabletRowstoreMultigetResult* response);
 
 private:
     friend class Tablet;
