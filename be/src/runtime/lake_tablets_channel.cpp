@@ -256,11 +256,11 @@ void LakeTabletsChannel::add_chunk(vectorized::Chunk* chunk, const PTabletWriter
         DCHECK(dw != nullptr);
         if (auto st = dw->open(); !st.ok()) { // Fail to `open()` AsyncDeltaWriter
             context->update_status(st);
-            count_down_latch.count_down(channel_size - i);
+            count_down_latch.count_down(static_cast<int>(channel_size - i));
             // Do NOT return
             break;
         }
-        dw->write(chunk, row_indexes + from, size, [&](const Status& st) {
+        dw->write(chunk, row_indexes + from, static_cast<uint32_t>(size), [&](const Status& st) {
             context->update_status(st);
             count_down_latch.count_down();
         });
@@ -276,7 +276,7 @@ void LakeTabletsChannel::add_chunk(vectorized::Chunk* chunk, const PTabletWriter
         int unfinished_senders = _close_sender(request.partition_ids().data(), request.partition_ids().size());
         close_channel = (unfinished_senders == 0);
         if (!close_channel) {
-            count_down_latch.count_down(_delta_writers.size());
+            count_down_latch.count_down(static_cast<int>(_delta_writers.size()));
         } else {
             VLOG(5) << "Closing channel. txn_id=" << _txn_id;
             std::lock_guard l1(_dirty_partitions_lock);
@@ -348,7 +348,7 @@ Status LakeTabletsChannel::_create_delta_writers(const PTabletWriterOpenRequest&
     for (auto& slot : params.schema().slot_descs()) {
         vectorized::GlobalDictMap global_dict;
         if (slot.global_dict_words_size()) {
-            for (size_t i = 0; i < slot.global_dict_words_size(); i++) {
+            for (int i = 0; i < slot.global_dict_words_size(); i++) {
                 const std::string& dict_word = slot.global_dict_words(i);
                 auto* data = _mem_pool->allocate(dict_word.size());
                 RETURN_IF_UNLIKELY_NULL(data, Status::MemoryAllocFailed("alloc mem for global dict failed"));

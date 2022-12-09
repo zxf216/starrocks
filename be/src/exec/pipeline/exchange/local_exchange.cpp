@@ -22,8 +22,8 @@ namespace starrocks::pipeline {
 
 Status PartitionExchanger::Partitioner::partition_chunk(const vectorized::ChunkPtr& chunk,
                                                         std::vector<uint32_t>& partition_row_indexes) {
-    int32_t num_rows = chunk->num_rows();
-    int32_t num_partitions = _source->get_sources().size();
+    auto num_rows = static_cast<uint32_t>(chunk->num_rows());
+    auto num_partitions = _source->get_sources().size();
 
     if (_shuffler == nullptr) {
         _shuffler = std::make_unique<Shuffler>(_source->runtime_state()->func_version() <= 3, false, _part_type,
@@ -104,7 +104,8 @@ Status PartitionExchanger::accept(const vectorized::ChunkPtr& chunk, const int32
             continue;
         }
 
-        RETURN_IF_ERROR(_source->get_sources()[i]->add_chunk(chunk, partition_row_indexes, from, size));
+        RETURN_IF_ERROR(_source->get_sources()[i]->add_chunk(chunk, partition_row_indexes, static_cast<uint32_t>(from),
+                                                             static_cast<uint32_t>(size)));
     }
     return Status::OK();
 }

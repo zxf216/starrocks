@@ -27,8 +27,8 @@
 #include "runtime/primitive_type.h"
 #include "simd/simd_utils.h"
 
+#pragma GCC diagnostic ignored "-Wconversion"
 namespace starrocks::vectorized {
-
 #ifdef __AVX2__
 template <typename T, bool left_const = false, bool right_const = false, std::enable_if_t<sizeof(T) == 1, int> = 1>
 inline void avx2_select_if(uint8_t*& selector, T*& dst, const T*& a, const T*& b, int size) {
@@ -334,3 +334,4 @@ public:
 };
 
 } // namespace starrocks::vectorized
+#pragma GCC diagnostic pop

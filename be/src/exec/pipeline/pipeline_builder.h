@@ -41,7 +41,7 @@ public:
     // Input the output chunks from the drivers of pred operators into ONE driver of the post operators.
     OpFactories maybe_interpolate_local_passthrough_exchange(RuntimeState* state, OpFactories& pred_operators);
     OpFactories maybe_interpolate_local_passthrough_exchange(RuntimeState* state, OpFactories& pred_operators,
-                                                             int num_receivers, bool force = false);
+                                                             size_t num_receivers, bool force = false);
 
     // Input the output chunks from multiple drivers of pred operators into DOP drivers of the post operators,
     // by partitioning each row output chunk to DOP partitions according to the key,

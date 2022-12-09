@@ -17,6 +17,7 @@
 #include "gutil/strings/substitute.h"
 #include "types/timestamp_value.h"
 
+#pragma GCC diagnostic ignored "-Wconversion"
 namespace starrocks::vectorized {
 
 static const std::string s_day_name[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
@@ -168,3 +169,4 @@ std::string DateValue::to_string() const {
 }
 
 } // namespace starrocks::vectorized
+#pragma GCC diagnostic pop

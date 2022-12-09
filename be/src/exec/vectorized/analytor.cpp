@@ -291,7 +291,7 @@ Status Analytor::open(RuntimeState* state) {
             }
         }
         vectorized::AggDataPtr agg_states =
-                _mem_pool->allocate_aligned(_agg_states_total_size, _max_agg_state_align_size);
+                _mem_pool->allocate_aligned(_agg_states_total_size, static_cast<uint32_t>(_max_agg_state_align_size));
         _managed_fn_states.emplace_back(std::make_unique<ManagedFunctionStates>(&_agg_fn_ctxs, agg_states, this));
         return Status::OK();
     };
@@ -663,13 +663,13 @@ void Analytor::remove_unused_buffer_values(RuntimeState* state) {
     _peer_group_start -= remove_count;
     _peer_group_end -= remove_count;
     _found_peer_group_end.second -= remove_count;
-    int32_t candidate_partition_end_size = _candidate_partition_ends.size();
+    auto candidate_partition_end_size = static_cast<int32_t>(_candidate_partition_ends.size());
     while (--candidate_partition_end_size >= 0) {
         auto peek = _candidate_partition_ends.front();
         _candidate_partition_ends.pop();
         _candidate_partition_ends.push(peek - remove_count);
     }
-    int32_t candidate_peer_group_end_size = _candidate_peer_group_ends.size();
+    auto candidate_peer_group_end_size = static_cast<int32_t>(_candidate_peer_group_ends.size());
     while (--candidate_peer_group_end_size >= 0) {
         auto peek = _candidate_peer_group_ends.front();
         _candidate_peer_group_ends.pop();

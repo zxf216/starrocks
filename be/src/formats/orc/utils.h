@@ -49,10 +49,10 @@ public:
     // orc date value is days since unix epoch time.
     // so conversion will be very simple.
     static void orc_date_to_native_date(vectorized::DateValue* dv, int64_t value) {
-        dv->_julian = value + vectorized::date::UNIX_EPOCH_JULIAN;
+        dv->_julian = static_cast<vectorized::JulianDate>(value + vectorized::date::UNIX_EPOCH_JULIAN);
     }
     static void orc_date_to_native_date(vectorized::JulianDate* jd, int64_t value) {
-        *jd = value + vectorized::date::UNIX_EPOCH_JULIAN;
+        *jd = static_cast<vectorized::JulianDate>(value + vectorized::date::UNIX_EPOCH_JULIAN);
     }
 };
 
@@ -89,7 +89,7 @@ public:
                                                       int64_t seconds, int64_t nanoseconds) {
         cctz::time_point<cctz::sys_seconds> t = CCTZ_UNIX_EPOCH + cctz::seconds(seconds);
         const auto tp = cctz::convert(t, tz);
-        tv->from_timestamp(tp.year(), tp.month(), tp.day(), tp.hour(), tp.minute(), tp.second(), 0);
+        tv->from_timestamp(static_cast<int>(tp.year()), tp.month(), tp.day(), tp.hour(), tp.minute(), tp.second(), 0);
     }
     static void orc_ts_to_native_ts(vectorized::TimestampValue* tv, const cctz::time_zone& tz, int64_t tzoffset,
                                     int64_t seconds, int64_t nanoseconds) {

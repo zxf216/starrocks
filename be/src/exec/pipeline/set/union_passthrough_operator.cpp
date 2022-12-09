@@ -31,12 +31,14 @@ Status UnionPassthroughOperator::push_chunk(RuntimeState* state, const ChunkPtr&
             // If there are multiple dest slots mapping to the same src slot id,
             // we should clone the src column instead of directly moving the src column.
             if (src_slot_item.ref_count > 1) {
-                auto dst_column = vectorized::ColumnHelper::clone_column(dst_slot->type(), dst_slot->is_nullable(),
-                                                                         src_column, src_chunk->num_rows());
+                auto dst_column =
+                        vectorized::ColumnHelper::clone_column(dst_slot->type(), dst_slot->is_nullable(), src_column,
+                                                               static_cast<uint32_t>(src_chunk->num_rows()));
                 _dst_chunk->append_column(std::move(dst_column), dst_slot->id());
             } else {
-                auto dst_column = vectorized::ColumnHelper::move_column(dst_slot->type(), dst_slot->is_nullable(),
-                                                                        src_column, src_chunk->num_rows());
+                auto dst_column =
+                        vectorized::ColumnHelper::move_column(dst_slot->type(), dst_slot->is_nullable(), src_column,
+                                                              static_cast<uint32_t>(src_chunk->num_rows()));
                 _dst_chunk->append_column(std::move(dst_column), dst_slot->id());
             }
         }
@@ -48,8 +50,9 @@ Status UnionPassthroughOperator::push_chunk(RuntimeState* state, const ChunkPtr&
         for (auto* src_slot : _src_slots) {
             auto* dst_slot = _dst_slots[i++];
             ColumnPtr& src_column = src_chunk->get_column_by_slot_id(src_slot->id());
-            auto dst_column = vectorized::ColumnHelper::move_column(dst_slot->type(), dst_slot->is_nullable(),
-                                                                    src_column, src_chunk->num_rows());
+            auto dst_column =
+                    vectorized::ColumnHelper::move_column(dst_slot->type(), dst_slot->is_nullable(), src_column,
+                                                          static_cast<uint32_t>(src_chunk->num_rows()));
             _dst_chunk->append_column(std::move(dst_column), dst_slot->id());
         }
     }

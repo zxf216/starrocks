@@ -260,7 +260,7 @@ pipeline::OpFactories IntersectNode::decompose_to_pipeline(pipeline::PipelineBui
     context->add_pipeline(operators_with_intersect_build_sink);
 
     // Use the rest children to erase keys from the hast table by IntersectProbeSinkOperator.
-    for (size_t i = 1; i < _children.size(); i++) {
+    for (int i = 1; i < _children.size(); i++) {
         OpFactories operators_with_intersect_probe_sink = child(i)->decompose_to_pipeline(context);
         operators_with_intersect_probe_sink = context->maybe_interpolate_local_shuffle_exchange(
                 runtime_state(), operators_with_intersect_probe_sink, _child_expr_lists[i]);

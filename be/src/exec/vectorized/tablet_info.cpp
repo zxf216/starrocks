@@ -184,7 +184,8 @@ Status OlapTablePartitionParam::_create_partition_keys(const std::vector<TExprNo
         case TYPE_LARGEINT: {
             StringParser::ParseResult parse_result = StringParser::PARSE_SUCCESS;
             auto val = StringParser::string_to_int<__int128>(t_expr.large_int_literal.value.c_str(),
-                                                             t_expr.large_int_literal.value.size(), &parse_result);
+                                                             static_cast<int>(t_expr.large_int_literal.value.size()),
+                                                             &parse_result);
             if (parse_result != StringParser::PARSE_SUCCESS) {
                 val = MAX_INT128;
             }
@@ -202,7 +203,7 @@ Status OlapTablePartitionParam::_create_partition_keys(const std::vector<TExprNo
     }
 
     part_key->columns = &_partition_columns;
-    part_key->index = _partition_columns[0]->size() - 1;
+    part_key->index = static_cast<uint32_t>(_partition_columns[0]->size() - 1);
     return Status::OK();
 }
 
@@ -230,7 +231,8 @@ Status OlapTablePartitionParam::find_tablets(Chunk* chunk, std::vector<OlapTable
         ChunkRow row;
         row.columns = &partition_columns;
         row.index = 0;
-        for (size_t i = 0; i < num_rows; ++i) {
+        DCHECK(num_rows <= std::numeric_limits<uint32_t>::max());
+        for (uint32_t i = 0; i < num_rows; ++i) {
             if ((*selection)[i]) {
                 row.index = i;
                 auto it = _partitions_map.upper_bound(&row);
@@ -242,7 +244,7 @@ Status OlapTablePartitionParam::find_tablets(Chunk* chunk, std::vector<OlapTable
                     }
                 } else if (LIKELY(_part_contains(it->second, &row))) {
                     (*partitions)[i] = it->second;
-                    (*indexes)[i] = (*indexes)[i] % it->second->num_buckets;
+                    (*indexes)[i] = (*indexes)[i] % static_cast<typeof((*indexes)[0])>(it->second->num_buckets);
                 } else {
                     (*partitions)[i] = nullptr;
                     (*selection)[i] = 0;
@@ -254,8 +256,8 @@ Status OlapTablePartitionParam::find_tablets(Chunk* chunk, std::vector<OlapTable
         }
     } else {
         OlapTablePartition* partition = _partitions_map.begin()->second;
-        int64_t num_bucket = partition->num_buckets;
-        for (size_t i = 0; i < num_rows; ++i) {
+        auto num_bucket = static_cast<uint32_t>(partition->num_buckets);
+        for (uint32_t i = 0; i < num_rows; ++i) {
             if ((*selection)[i]) {
                 (*partitions)[i] = partition;
                 (*indexes)[i] = (*indexes)[i] % num_bucket;
@@ -271,7 +273,7 @@ void OlapTablePartitionParam::_compute_hashes(Chunk* chunk, std::vector<uint32_t
 
     for (size_t i = 0; i < _distributed_slot_descs.size(); ++i) {
         _distributed_columns[i] = chunk->get_column_by_slot_id(_distributed_slot_descs[i]->id()).get();
-        _distributed_columns[i]->crc32_hash(&(*indexes)[0], 0, num_rows);
+        _distributed_columns[i]->crc32_hash(&(*indexes)[0], 0, static_cast<uint32_t>(num_rows));
     }
 }
 

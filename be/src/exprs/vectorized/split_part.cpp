@@ -21,6 +21,7 @@
 #include "exprs/function_context.h"
 #include "exprs/vectorized/string_functions.h"
 
+#pragma GCC diagnostic ignored "-Wconversion"
 namespace starrocks::vectorized {
 
 /**
@@ -126,3 +127,4 @@ StatusOr<ColumnPtr> StringFunctions::split_part(FunctionContext* context,
 }
 
 } // namespace starrocks::vectorized
+#pragma GCC diagnostic pop
