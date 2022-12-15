@@ -90,12 +90,12 @@ public:
 
     template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<T, bool>, T>>
     static JsonValue from_bool(T value) {
-        return from_uint(static_cast<bool>(value));
+        return from_bool(static_cast<bool>(value));
     }
 
     template <typename T, typename = std::enable_if_t<std::is_arithmetic_v<T> && !std::is_same_v<T, double>, T>>
     static JsonValue from_double(T value) {
-        return from_uint(static_cast<double>(value));
+        return from_double(static_cast<double>(value));
     }
 
     template <class T>

@@ -402,7 +402,7 @@ DEFINE_UNARY_FN_WITH_IMPL(NumberCheck, value) {
     // finite value y where y < x.
     // This is different from std::numeric_limits<T>::min() for floating-point types.
     // So we use lowest instead of min for lower bound of all types.
-    return (value < (Type)std::numeric_limits<ResultType>::lowest()) |
+    return (value < (Type)std::numeric_limits<ResultType>::lowest()) ||
            (value > (Type)std::numeric_limits<ResultType>::max());
 }
 

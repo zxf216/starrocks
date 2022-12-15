@@ -59,13 +59,15 @@ public:
 
         if constexpr (!std::is_same<INPUT_NULL_OP, NopCheck>::value) {
             for (auto i = 0; i < size; ++i) {
-                ns[i] = INPUT_NULL_OP::template apply<RunTimeCppType<Type>, bool>(r1[i]);
+                ns[i] = static_cast<uint8_t>(
+                        INPUT_NULL_OP::template apply<RunTimeCppType<Type>, RunTimeCppType<ResultType>>(r1[i]));
             }
         }
 
         if constexpr (!std::is_same<OUTPUT_NULL_OP, NopCheck>::value) {
             for (auto i = 0; i < size; ++i) {
-                ns[i] = OUTPUT_NULL_OP::template apply<RunTimeCppType<ResultType>, bool>(r3[i]);
+                ns[i] = static_cast<uint8_t>(
+                        OUTPUT_NULL_OP::template apply<RunTimeCppType<ResultType>, RunTimeCppType<ResultType>>(r3[i]));
             }
         }
 
