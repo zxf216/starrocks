@@ -17,7 +17,6 @@ package com.starrocks.connector.iceberg;
 
 import com.starrocks.catalog.Database;
 import com.starrocks.catalog.IcebergTable;
-import com.starrocks.connector.exception.StarRocksConnectorException;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -37,12 +36,12 @@ public interface IcebergCatalog {
     /**
      * Loads a native Iceberg table based on the information in 'feTable'.
      */
-    Table loadTable(IcebergTable table) throws StarRocksConnectorException;
+    Table loadTable(IcebergTable table) throws StarRocksIcebergException;
 
     /**
      * Loads a native Iceberg table based on the information in 'feTable'.
      */
-    Table loadTable(TableIdentifier tableIdentifier) throws StarRocksConnectorException;
+    Table loadTable(TableIdentifier tableIdentifier) throws StarRocksIcebergException;
 
     /**
      * Loads a native Iceberg table based on 'tableId' or 'tableLocation'.
@@ -56,7 +55,7 @@ public interface IcebergCatalog {
      */
     Table loadTable(TableIdentifier tableId,
                     String tableLocation,
-                    Map<String, String> properties) throws StarRocksConnectorException;
+                    Map<String, String> properties) throws StarRocksIcebergException;
 
     List<String> listAllDatabases();
 

@@ -16,7 +16,6 @@
 package com.starrocks.connector.iceberg;
 
 import com.starrocks.connector.HdfsEnvironment;
-import com.starrocks.connector.iceberg.hive.IcebergHiveCatalog;
 import mockit.Expectations;
 import mockit.Mock;
 import mockit.MockUp;
@@ -41,15 +40,15 @@ public class IcebergHiveCatalogTest {
     @Test
     public void testCatalogType() {
         Map<String, String> icebergProperties = new HashMap<>();
+        HdfsEnvironment hdfsEnvironment = new HdfsEnvironment();
         IcebergHiveCatalog icebergHiveCatalog =
-                (IcebergHiveCatalog) CatalogLoader.hive("hive_native_catalog", new Configuration(), icebergProperties)
-                        .loadCatalog();
+                IcebergHiveCatalog.getInstance("thrift://test:9030", icebergProperties, hdfsEnvironment);
         Assert.assertEquals(IcebergCatalogType.HIVE_CATALOG, icebergHiveCatalog.getIcebergCatalogType());
     }
 
     @Test
     public void testLoadTable(@Mocked IcebergHiveCatalog hiveCatalog) {
-        TableIdentifier identifier = TableIdentifier.of("db", "table");
+        TableIdentifier identifier = IcebergUtil.getIcebergTableIdentifier("db", "table");
         new Expectations() {
             {
                 hiveCatalog.loadTable(identifier);
@@ -70,8 +69,7 @@ public class IcebergHiveCatalogTest {
         Map<String, String> icebergProperties = new HashMap<>();
         HdfsEnvironment hdfsEnvironment = new HdfsEnvironment();
         IcebergHiveCatalog icebergHiveCatalog =
-                (IcebergHiveCatalog) CatalogLoader.hive("hive_native_catalog", new Configuration(), icebergProperties)
-                        .loadCatalog();
+                IcebergHiveCatalog.getInstance("thrift://test:9030", icebergProperties, hdfsEnvironment);
         Table table = icebergHiveCatalog.loadTable(identifier);
         Assert.assertEquals("test", table.name());
     }
@@ -97,9 +95,9 @@ public class IcebergHiveCatalogTest {
         };
 
         Map<String, String> icebergProperties = new HashMap<>();
+        HdfsEnvironment hdfsEnvironment = new HdfsEnvironment();
         IcebergHiveCatalog icebergHiveCatalog =
-                (IcebergHiveCatalog) CatalogLoader.hive("hive_native_catalog", new Configuration(), icebergProperties)
-                        .loadCatalog();
+                IcebergHiveCatalog.getInstance("thrift://test:9030", icebergProperties, hdfsEnvironment);
         List<String> dbs = icebergHiveCatalog.listAllDatabases();
         Assert.assertEquals(Arrays.asList("db1", "db2"), dbs);
     }

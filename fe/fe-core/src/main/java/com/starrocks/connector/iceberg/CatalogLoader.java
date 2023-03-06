@@ -16,8 +16,6 @@
 package com.starrocks.connector.iceberg;
 
 import com.starrocks.connector.iceberg.glue.IcebergGlueCatalog;
-import com.starrocks.connector.iceberg.hive.IcebergHiveCatalog;
-import com.starrocks.connector.iceberg.rest.IcebergRESTCatalog;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;

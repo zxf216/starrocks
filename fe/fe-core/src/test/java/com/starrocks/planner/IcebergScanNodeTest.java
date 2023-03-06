@@ -11,9 +11,10 @@ import com.starrocks.analysis.TupleDescriptor;
 import com.starrocks.catalog.Column;
 import com.starrocks.catalog.IcebergTable;
 import com.starrocks.catalog.Type;
+import com.starrocks.common.UserException;
+import com.starrocks.connector.iceberg.IcebergUtil;
 import com.starrocks.qe.ConnectContext;
 import com.starrocks.server.GlobalStateMgr;
-import com.starrocks.sql.analyzer.AnalyzeTestUtil;
 import com.starrocks.sql.optimizer.base.ColumnRefFactory;
 import com.starrocks.sql.optimizer.operator.physical.PhysicalIcebergScanOperator;
 import com.starrocks.sql.optimizer.operator.scalar.ColumnRefOperator;
@@ -23,8 +24,6 @@ import com.starrocks.thrift.THdfsScanRange;
 import com.starrocks.thrift.TIcebergDeleteFile;
 import com.starrocks.thrift.TIcebergFileContent;
 import com.starrocks.thrift.TScanRange;
-import com.starrocks.utframe.StarRocksAssert;
-import com.starrocks.utframe.UtFrameUtils;
 import mockit.Expectations;
 import mockit.Mock;
 import mockit.MockUp;
@@ -43,6 +42,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableScan;
 import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.apache.iceberg.expressions.Expression;
 import org.apache.iceberg.io.CloseableIterable;
@@ -50,13 +50,11 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.types.Types;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -68,24 +66,6 @@ public class IcebergScanNodeTest {
     private String resourceName;
     private List<Column> columns;
     private Map<String, String> properties;
-    StarRocksAssert starRocksAssert = new StarRocksAssert();
-
-    public IcebergScanNodeTest() throws IOException {
-    }
-
-    @Before
-    public void before() throws Exception {
-        UtFrameUtils.createMinStarRocksCluster();
-        AnalyzeTestUtil.init();
-        String createCatalog = "CREATE EXTERNAL CATALOG iceberg_catalog PROPERTIES(\"type\"=\"iceberg\", " +
-                "\"iceberg.catalog.hive.metastore.uris\"=\"thrift://127.0.0.1:9083\", \"iceberg.catalog.type\"=\"hive\")";
-        starRocksAssert.withCatalog(createCatalog);
-    }
-
-    @After
-    public void after() throws Exception {
-        starRocksAssert.dropCatalog("iceberg_catalog");
-    }
 
     static class LocalFileIO implements FileIO {
 
@@ -153,13 +133,19 @@ public class IcebergScanNodeTest {
     }
 
     private void setUpMock(boolean isPosDelete, com.starrocks.catalog.IcebergTable table,
-                           Table iTable, Snapshot snapshot, DataTableScan dataTableScan) {
-        new MockUp<DataTableScan>() {
+                           Table iTable, Snapshot snapshot) {
+        new MockUp<IcebergUtil>() {
             @Mock
-            public DataTableScan useSnapshot(long var1) {
+            public TableScan getTableScan(Table table,
+                                          Snapshot snapshot,
+                                          Expression icebergPredicate,
+                                          Boolean includeColumnStats) {
                 return new DataTableScan(null, iTable);
             }
+        };
 
+
+        new MockUp<DataTableScan>() {
             @Mock
             public CloseableIterable<CombinedScanTask> planTasks() {
                 List<CombinedScanTask> tasks = new ArrayList<CombinedScanTask>();
@@ -194,17 +180,11 @@ public class IcebergScanNodeTest {
 
         new Expectations() {
             {
-                table.getCatalogName();
-                result = "iceberg_catalog";
-
                 table.getNativeTable();
                 result = iTable;
 
                 iTable.currentSnapshot();
                 result = snapshot;
-
-                iTable.newScan().useSnapshot(0);
-                result = dataTableScan;
             }
         };
     }
@@ -227,14 +207,13 @@ public class IcebergScanNodeTest {
     @Test
     public void testGetScanRangeLocations(@Mocked com.starrocks.catalog.IcebergTable table,
                                           @Mocked Table iTable,
-                                          @Mocked Snapshot snapshot,
-                                          @Mocked DataTableScan dataTableScan) throws Exception {
+                                          @Mocked Snapshot snapshot) throws UserException {
         Analyzer analyzer = new Analyzer(GlobalStateMgr.getCurrentState(), new ConnectContext());
         DescriptorTable descTable = analyzer.getDescTbl();
         TupleDescriptor tupleDesc = descTable.createTupleDescriptor("DestTableTuple");
         tupleDesc.setTable(table);
 
-        setUpMock(true, table, iTable, snapshot, dataTableScan);
+        setUpMock(true, table, iTable, snapshot);
 
         IcebergScanNode scanNode = new IcebergScanNode(new PlanNodeId(0), tupleDesc, "IcebergScanNode");
         scanNode.setupScanRangeLocations();
@@ -253,15 +232,14 @@ public class IcebergScanNodeTest {
 
     @Test
     public void testGetScanRangeLocationsWithEquality(@Mocked com.starrocks.catalog.IcebergTable table,
-                                                      @Mocked Table iTable,
-                                                      @Mocked Snapshot snapshot,
-                                                      @Mocked DataTableScan dataTableScan) throws Exception {
+                                          @Mocked Table iTable,
+                                          @Mocked Snapshot snapshot) throws UserException {
         Analyzer analyzer = new Analyzer(GlobalStateMgr.getCurrentState(), new ConnectContext());
         DescriptorTable descTable = analyzer.getDescTbl();
         TupleDescriptor tupleDesc = descTable.createTupleDescriptor("DestTableTuple");
         tupleDesc.setTable(table);
 
-        setUpMock(false, table, iTable, snapshot, dataTableScan);
+        setUpMock(false, table, iTable, snapshot);
 
         IcebergScanNode scanNode = new IcebergScanNode(new PlanNodeId(0), tupleDesc, "IcebergScanNode");
         scanNode.setupScanRangeLocations();
@@ -279,14 +257,13 @@ public class IcebergScanNodeTest {
                                           @Mocked Snapshot snapshot,
                                           @Mocked PhysicalIcebergScanOperator node,
                                           @Mocked ColumnRefFactory columnRefFactory,
-                                          @Mocked ExecPlan context,
-                                          @Mocked DataTableScan dataTableScan) throws Exception {
+                                          @Mocked ExecPlan context) throws UserException {
         Analyzer analyzer = new Analyzer(GlobalStateMgr.getCurrentState(), new ConnectContext());
         DescriptorTable descTable = analyzer.getDescTbl();
         TupleDescriptor tupleDesc = descTable.createTupleDescriptor("DestTableTuple");
         tupleDesc.setTable(table);
 
-        setUpMock(false, table, iTable, snapshot, dataTableScan);
+        setUpMock(false, table, iTable, snapshot);
 
         Map<ColumnRefOperator, Column> columnMap = new HashMap<>();
         Map<ColumnRefOperator, Expr> columnRefOperatorExprMap = new HashMap<>();
