@@ -25,6 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -133,6 +134,8 @@ public class JournalWriterTest {
         Assert.assertEquals(1, journalQueue.size());
     }
 
+    // TODO: this ut wastes too much memory
+    @Ignore
     @Test
     public void testTooManyLogs() throws Exception {
         Config.metadata_journal_max_batch_cnt = 2;
