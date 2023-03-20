@@ -142,6 +142,11 @@ Status QueryContext::init_query_once(workgroup::WorkGroup* wg) {
             } else {
                 st = maybe_token.status();
             }
+<<<<<<< HEAD
+=======
+
+            _spill_manager = std::make_unique<spill::QuerySpillManager>(_query_id);
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
         });
     }
 

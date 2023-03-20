@@ -171,6 +171,14 @@ pipeline::OpFactories AggregateBlockingNode::_decompose_to_pipeline(pipeline::Op
                                                                     pipeline::PipelineBuilderContext* context) {
     using namespace pipeline;
 
+<<<<<<< HEAD
+=======
+    auto executor = std::make_shared<spill::IOTaskExecutor>(ExecEnv::GetInstance()->pipeline_sink_io_pool());
+    auto degree_of_parallelism = context->source_operator(ops_with_sink)->degree_of_parallelism();
+    auto spill_channel_factory =
+            std::make_shared<SpillProcessChannelFactory>(degree_of_parallelism, std::move(executor));
+
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
     // create aggregator factory
     // shared by sink operator and source operator
     auto aggregator_factory = std::make_shared<AggFactory>(_tnode);

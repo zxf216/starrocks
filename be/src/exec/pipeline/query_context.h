@@ -165,6 +165,11 @@ public:
     // STREAM MV
     StreamEpochManager* stream_epoch_manager() const { return _stream_epoch_manager.get(); }
 
+<<<<<<< HEAD
+=======
+    spill::QuerySpillManager* spill_manager() { return _spill_manager.get(); }
+
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 public:
     static constexpr int DEFAULT_EXPIRE_SECONDS = 300;
 
@@ -207,6 +212,11 @@ private:
 
     // STREAM MV
     std::shared_ptr<StreamEpochManager> _stream_epoch_manager;
+<<<<<<< HEAD
+=======
+
+    std::unique_ptr<spill::QuerySpillManager> _spill_manager;
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 };
 
 class QueryContextManager {

@@ -307,6 +307,27 @@ public:
     // refill_op: pre-cache agg operator, Aggregator's holder.
     Status reset_state(RuntimeState* state, const std::vector<ChunkPtr>& refill_chunks, pipeline::Operator* refill_op);
 
+<<<<<<< HEAD
+=======
+    const AggregatorParamsPtr& params() const { return _params; }
+
+    bool is_full() { return _spiller != nullptr && _spiller->is_full(); }
+
+    const std::shared_ptr<spill::Spiller>& spiller() const { return _spiller; }
+    void set_spiller(std::shared_ptr<spill::Spiller> spiller) { _spiller = std::move(spiller); }
+
+    const SpillProcessChannelPtr spill_channel() const { return _spill_channel; }
+    void set_spill_channel(SpillProcessChannelPtr channel) { _spill_channel = std::move(channel); }
+
+    auto& io_executor() { return *spill_channel()->io_executor(); }
+
+    bool has_pending_data() const { return _spiller != nullptr && _spiller->has_pending_data(); }
+    bool has_pending_restore() const { return _spiller != nullptr && !_spiller->restore_finished(); }
+    bool is_spilled_eos() const {
+        return _spiller == nullptr || _spiller->spilled_append_rows() == _spiller->restore_read_rows();
+    }
+
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 #ifdef NDEBUG
     static constexpr size_t two_level_memory_threshold = 33554432; // 32M, L3 Cache
     static constexpr size_t streaming_hash_table_size_threshold = 10000000;
@@ -414,6 +435,12 @@ protected:
 
     AggStatistics* _agg_stat;
 
+<<<<<<< HEAD
+=======
+    std::shared_ptr<spill::Spiller> _spiller;
+    SpillProcessChannelPtr _spill_channel;
+
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 public:
     void build_hash_map(size_t chunk_size, bool agg_group_by_with_limit = false);
     void build_hash_map_with_selection(size_t chunk_size);

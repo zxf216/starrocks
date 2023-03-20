@@ -272,6 +272,7 @@ pipeline::OpFactories TopNNode::decompose_to_pipeline(pipeline::PipelineBuilderC
     // define a runtime filter holder
     context->fragment_context()->runtime_filter_hub()->add_holder(_id);
 
+<<<<<<< HEAD
     std::any context_factory;
     if (is_partition) {
         context_factory = std::make_shared<LocalPartitionTopnContextFactory>(
@@ -282,6 +283,29 @@ pipeline::OpFactories TopNNode::decompose_to_pipeline(pipeline::PipelineBuilderC
         context_factory = std::make_shared<SortContextFactory>(
                 runtime_state(), _tnode.sort_node.topn_type, is_merging, _offset, _limit,
                 _sort_exec_exprs.lhs_ordering_expr_ctxs(), _is_asc_order, _is_null_first, _build_runtime_filters);
+=======
+    auto degree_of_parallelism = context->source_operator(ops_sink_with_sort)->degree_of_parallelism();
+
+    // spill components
+    // TODO: avoid create spill channel when when disable spill
+
+    auto executor = std::make_shared<spill::IOTaskExecutor>(ExecEnv::GetInstance()->pipeline_sink_io_pool());
+    auto spill_channel_factory =
+            std::make_shared<SpillProcessChannelFactory>(degree_of_parallelism, std::move(executor));
+
+    // spill process operator
+    if (runtime_state()->enable_spill() && _limit < 0) {
+        OpFactories spill_process_operators;
+
+        auto spill_process_factory = std::make_shared<SpillProcessOperatorFactory>(
+                context->next_operator_id(), "spill-process", id(), spill_channel_factory);
+        spill_process_factory->set_degree_of_parallelism(degree_of_parallelism);
+        spill_process_operators.emplace_back(std::move(spill_process_factory));
+
+        auto noop_sink_factory = std::make_shared<NoopSinkOperatorFactory>(context->next_operator_id(), id());
+        spill_process_operators.emplace_back(std::move(noop_sink_factory));
+        context->add_pipeline(std::move(spill_process_operators));
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
     }
 
     // Create a shared RefCountedRuntimeFilterCollector

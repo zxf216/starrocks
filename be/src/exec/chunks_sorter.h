@@ -107,6 +107,15 @@ public:
 
     virtual void setup_runtime(RuntimeProfile* profile, MemTracker* parent_mem_tracker);
 
+<<<<<<< HEAD
+=======
+    void set_spiller(std::shared_ptr<spill::Spiller> spiller) { _spiller = std::move(spiller); }
+
+    void set_spill_channel(SpillProcessChannelPtr channel) { _spill_channel = std::move(channel); }
+    const SpillProcessChannelPtr& spill_channel() { return _spill_channel; }
+    auto& io_executor() { return *spill_channel()->io_executor(); }
+
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
     // Append a Chunk for sort.
     virtual Status update(RuntimeState* state, const ChunkPtr& chunk) = 0;
     // Finish seeding Chunk, and get sorted data with top OFFSET rows have been skipped.
@@ -122,6 +131,20 @@ public:
 
     virtual int64_t mem_usage() const = 0;
 
+<<<<<<< HEAD
+=======
+    virtual bool is_full() { return false; }
+
+    virtual bool has_pending_data() { return false; }
+
+    const std::shared_ptr<spill::Spiller>& spiller() const { return _spiller; }
+
+    size_t revocable_mem_bytes() const { return _revocable_mem_bytes; }
+    void set_spill_stragety(spill::SpillStrategy stragety) { _spill_strategy = stragety; }
+
+    virtual void cancel() {}
+
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 protected:
     size_t _get_number_of_order_by_columns() const { return _sort_exprs->size(); }
 
@@ -139,6 +162,14 @@ protected:
     RuntimeProfile::Counter* _sort_timer = nullptr;
     RuntimeProfile::Counter* _merge_timer = nullptr;
     RuntimeProfile::Counter* _output_timer = nullptr;
+<<<<<<< HEAD
+=======
+
+    size_t _revocable_mem_bytes = 0;
+    spill::SpillStrategy _spill_strategy = spill::SpillStrategy::NO_SPILL;
+    std::shared_ptr<spill::Spiller> _spiller;
+    SpillProcessChannelPtr _spill_channel;
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 };
 
 namespace detail {

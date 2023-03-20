@@ -235,6 +235,16 @@ set(EXEC_FILES
     query_cache/lane_arbiter.cpp
     query_cache/conjugate_operator.cpp
     query_cache/ticket_checker.cpp
+<<<<<<< HEAD
+=======
+    spill/spiller.cpp
+    spill/spiller_factory.cpp
+    spill/mem_table.cpp
+    spill/dir_manager.cpp
+    spill/serde.cpp
+    spill/input_stream.cpp
+    spill/log_block_manager.cpp
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
     stream/state/mem_state_table.cpp
     stream/aggregate/agg_state_data.cpp
     stream/aggregate/agg_group_state.cpp

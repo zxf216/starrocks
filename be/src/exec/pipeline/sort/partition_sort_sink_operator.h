@@ -22,6 +22,12 @@
 #include "exec/pipeline/runtime_filter_types.h"
 #include "exec/pipeline/sort/sort_context.h"
 #include "exec/sort_exec_exprs.h"
+<<<<<<< HEAD
+=======
+#include "exec/spill/executor.h"
+#include "exec/spill/spiller_factory.h"
+#include "runtime/runtime_state.h"
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828))
 
 namespace starrocks {
 class BufferControlBlock;

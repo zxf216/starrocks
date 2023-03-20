@@ -16,6 +16,7 @@ package com.starrocks.sql.ast;
 
 import com.starrocks.analysis.RedirectStatus;
 
+<<<<<<< HEAD:fe/fe-core/src/main/java/com/starrocks/sql/ast/UseWarehouseStmt.java
 public class UseWarehouseStmt extends StatementBase {
     private final String warehouseName;
 
@@ -38,3 +39,22 @@ public class UseWarehouseStmt extends StatementBase {
     }
 }
 
+=======
+#include "common/statusor.h"
+#include "exec/spill/spiller.h"
+
+namespace starrocks {
+namespace spill {
+std::shared_ptr<Spiller> SpillerFactory::create(const SpilledOptions& options) {
+    std::lock_guard guard(_mutex);
+    auto spiller = std::make_shared<Spiller>(options, shared_from_this());
+    _spillers.emplace_back(spiller);
+    return spiller;
+}
+
+SpillerFactoryPtr make_spilled_factory() {
+    return std::make_shared<SpillerFactory>();
+}
+} // namespace spill
+} // namespace starrocks
+>>>>>>> e8b0953df ([Enhancement][Refactor] Reduce the number of spill files (#18828)):be/src/exec/spill/spiller_factory.cpp
