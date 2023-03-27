@@ -80,7 +80,7 @@ public class SessionVariable implements Serializable, Writable, Cloneable {
     public static final String LOAD_MEM_LIMIT = "load_mem_limit";
 
     /**
-     * The mem limit of query on BE. It takes effects only when enabling pipeline engine.
+     * The mem limit of query on BE. It takes effects only when enabling the pipeline engine.
      * - If `query_mem_limit` > 0, use it to limit the memory of a query.
      * The memory a query able to be used is just `query_mem_limit`.
      * - Otherwise, use `exec_mem_limit` to limit the memory of a query.
