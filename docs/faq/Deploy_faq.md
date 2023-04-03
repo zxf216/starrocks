@@ -96,13 +96,8 @@ This error may occur during data loading into Primary Key tables. During data lo
 
 Patches to this bug (Primary Key tables do not support BE disk space re-balancing) is still under active development. Currently, you can fix it in either of the following two ways:
 
-<<<<<<< HEAD
-- Manually distributing data on all disks.
-- If the data on these disks is not important, we recommend deleting the disks. After you delete the disks and switch the disk directory, this error occurs again. You can then truncate the 11903 table  to solve it.
-=======
 - Manually distribute data among disks. For example, copy the directory from the disk with a high space usage to a disk with a larger space.
 - If the data on these disks is not important, we recommend you delete the disks and modify the disk path. If this error persists, use [TRUNCATE TABLE](../sql-reference/sql-statements/data-definition/TRUNCATE%20TABLE.md) to clear data in the table to free up some space.
->>>>>>> cf96cd275 ([Doc] Deploy faq and variable (#20685))
 
 ## Why does the error "Fe type:unknown ,is ready :false." occur when I start an FE during the cluster restart?
 
