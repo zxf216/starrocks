@@ -67,12 +67,22 @@ FUNCTION_FLAG = "function: "
 NAME_FLAG = "-- name: "
 UNCHECK_FLAG = "[UC]"
 ORDER_FLAG = "[ORDER]"
+<<<<<<< HEAD
+=======
+REGEX_FLAG = "[REGEX]"
+VERSION_FILE = os.path.join(root_path, "version")
+>>>>>>> 258bce807 ([Tool] Optimize version information in remote execution (#22536))
 
 
 class StarrocksSQLApiLib(unittest.TestCase):
     """api lib"""
-
-    version = os.environ.get("version", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"))
+    if os.path.exists(VERSION_FILE):
+        with open(VERSION_FILE, "r") as f:
+            version = f.readlines()[0]
+        log.info("version: %s" % version)
+    else:
+        version = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        log.info("version timestamp: %s" % version)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
