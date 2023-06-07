@@ -20,8 +20,13 @@ Join our [Slack channel](https://join.slack.com/t/starrocks/shared_invite/zt-z5z
 <NavBoxPart title="Get started​">
 <NavBoxPartItem>
 
+<<<<<<< HEAD
 - [Deploy StarRocks](../quick_start/Deploy.md)
 - [Create a table](../quick_start/create_table.md)
+=======
+- [Deploy with Docker](../quick_start/deploy_with_docker.md)
+- [Create a table](../quick_start/Create_table.md)
+>>>>>>> bd535d9fa ([Doc] fix dead link of create table page (#24770))
 - [Ingest and query data](../quick_start/Import_and_query.md)
 
 </NavBoxPartItem>
