@@ -1036,7 +1036,12 @@ public class ShowExecutorTest {
         Assert.assertEquals("testMv", resultSet.getString(2));
         Assert.assertEquals("ASYNC", resultSet.getString(3));
         Assert.assertEquals("true", resultSet.getString(4));
+<<<<<<< HEAD
         Assert.assertEquals("RANGE", resultSet.getString(5));
+=======
+        Assert.assertEquals(null, resultSet.getString(5));
+        Assert.assertEquals("RANGE", resultSet.getString(6));
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
         for (int i = 6; i < mvSchemaTable.size() - 2; i++) {
             Assert.assertEquals("", resultSet.getString(6));
         }

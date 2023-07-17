@@ -91,6 +91,7 @@ import com.starrocks.scheduler.TaskBuilder;
 import com.starrocks.scheduler.TaskManager;
 import com.starrocks.scheduler.mv.MaterializedViewMgr;
 import com.starrocks.server.GlobalStateMgr;
+import com.starrocks.server.LocalMetastore;
 import com.starrocks.sql.analyzer.Analyzer;
 import com.starrocks.sql.analyzer.AnalyzerUtils;
 import com.starrocks.sql.analyzer.MaterializedViewAnalyzer;
@@ -863,6 +864,21 @@ public class AlterJobMgr {
         olapNewTbl.checkAndSetName(origTblName, true);
         origTable.checkAndSetName(newTblName, true);
 
+<<<<<<< HEAD
+=======
+        if (origTable.isMaterializedView() || newTbl.isMaterializedView()) {
+            if (!(origTable.isMaterializedView() && newTbl.isMaterializedView())) {
+                throw new DdlException("Materialized view can only SWAP WITH materialized view");
+            }
+        }
+
+        // inactive the related MVs
+        LocalMetastore.inactiveRelatedMaterializedView(db, origTable,
+                String.format("based table %s swapped", origTblName));
+        LocalMetastore.inactiveRelatedMaterializedView(db, olapNewTbl,
+                String.format("based table %s swapped", newTblName));
+
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
         swapTableInternal(db, origTable, olapNewTbl);
 
         // write edit log
@@ -951,6 +967,7 @@ public class AlterJobMgr {
             }
             view.setNewFullSchema(newFullSchema);
 
+            LocalMetastore.inactiveRelatedMaterializedView(db, view, String.format("base view %s changed", viewName));
             db.dropTable(viewName);
             db.createTable(view);
 
@@ -981,6 +998,7 @@ public class AlterJobMgr {
             }
             view.setNewFullSchema(newFullSchema);
 
+            LocalMetastore.inactiveRelatedMaterializedView(db, view, String.format("base view %s changed", viewName));
             db.dropTable(viewName);
             db.createTable(view);
 

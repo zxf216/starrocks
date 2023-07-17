@@ -528,6 +528,10 @@ public class ShowExecutor {
             resultRow.add(String.valueOf(mvTable.getRefreshScheme().getType()));
             // is_active
             resultRow.add(String.valueOf(mvTable.isActive()));
+<<<<<<< HEAD
+=======
+            resultRow.add(Optional.ofNullable(mvTable.getInactiveReason()).map(String::valueOf).orElse(null));
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
             // partition info
             if (mvTable.getPartitionInfo() != null && mvTable.getPartitionInfo().getType() != null) {
                 resultRow.add(mvTable.getPartitionInfo().getType().toString());

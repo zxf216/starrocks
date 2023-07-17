@@ -3935,9 +3935,26 @@ public class LocalMetastore implements ConnectorMetadata {
             throw new DdlException("Same table name");
         }
 
+<<<<<<< HEAD
         // check if name is already used
         if (db.getTable(newTableName) != null) {
             throw new DdlException("Table name[" + newTableName + "] is already used");
+=======
+        db.writeLock();
+        try {
+            // check if name is already used
+            if (db.getTable(newTableName) != null) {
+                throw new DdlException("Table name[" + newTableName + "] is already used");
+            }
+
+            olapTable.checkAndSetName(newTableName, false);
+
+            db.dropTable(oldTableName);
+            db.registerTableUnlocked(olapTable);
+            inactiveRelatedMaterializedView(db, olapTable, String.format("based table %s renamed ", oldTableName));
+        } finally {
+            db.writeUnlock();
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
         }
 
         olapTable.checkAndSetName(newTableName, false);
@@ -3951,6 +3968,7 @@ public class LocalMetastore implements ConnectorMetadata {
         LOG.info("rename table[{}] to {}, tableId: {}", oldTableName, newTableName, olapTable.getId());
     }
 
+<<<<<<< HEAD
     private void disableMaterializedViewForRenameTable(Database db, OlapTable olapTable) {
         for (MvId mvId : olapTable.getRelatedMaterializedViews()) {
             MaterializedView mv = (MaterializedView) db.getTable(mvId.getId());
@@ -3958,8 +3976,28 @@ public class LocalMetastore implements ConnectorMetadata {
                 LOG.warn("Setting the materialized view {}({}) to invalid because " +
                         "the table {} was renamed.", mv.getName(), mv.getId(), olapTable.getName());
                 mv.setActive(false);
+=======
+    @Override
+    public void alterTableComment(Database db, Table table, AlterTableCommentClause clause) {
+        ModifyTablePropertyOperationLog log = new ModifyTablePropertyOperationLog(db.getId(), table.getId());
+        log.setComment(clause.getNewComment());
+        GlobalStateMgr.getCurrentState().getEditLog().logAlterTableProperties(log);
+
+        table.setComment(clause.getNewComment());
+    }
+
+    public static void inactiveRelatedMaterializedView(Database db, Table olapTable, String reason) {
+        for (MvId mvId : olapTable.getRelatedMaterializedViews()) {
+            MaterializedView mv = (MaterializedView) db.getTable(mvId.getId());
+            if (mv != null) {
+                LOG.warn("Inactive MV {}/{} because {}", mv.getName(), mv.getId(), reason);
+                mv.setInactiveAndReason(reason);
+
+                // recursive inactive
+                inactiveRelatedMaterializedView(db, mv, String.format("base table %s inactive", mv.getName()));
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
             } else {
-                LOG.warn("Ignore materialized view {} does not exists", mvId);
+                LOG.info("Ignore materialized view {} does not exists", mvId);
             }
         }
     }
@@ -3976,8 +4014,13 @@ public class LocalMetastore implements ConnectorMetadata {
             String tableName = table.getName();
             db.dropTable(tableName);
             table.setName(newTableName);
+<<<<<<< HEAD
             db.createTable(table);
             disableMaterializedViewForRenameTable(db, table);
+=======
+            db.registerTableUnlocked(table);
+            inactiveRelatedMaterializedView(db, table, String.format("base table {} renamed", tableName));
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
 
             LOG.info("replay rename table[{}] to {}, tableId: {}", tableName, newTableName, table.getId());
         } finally {

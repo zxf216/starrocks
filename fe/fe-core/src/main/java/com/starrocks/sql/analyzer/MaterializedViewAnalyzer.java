@@ -55,7 +55,6 @@ import com.starrocks.common.FeConstants;
 import com.starrocks.common.util.DateUtils;
 import com.starrocks.common.util.PropertyAnalyzer;
 import com.starrocks.qe.ConnectContext;
-import com.starrocks.server.GlobalStateMgr;
 import com.starrocks.sql.ast.AlterMaterializedViewStmt;
 import com.starrocks.sql.ast.AstVisitor;
 import com.starrocks.sql.ast.AsyncRefreshSchemeDesc;
@@ -107,7 +106,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.starrocks.server.CatalogMgr.ResourceMappingCatalog.isResourceMappingCatalog;
-import static com.starrocks.server.CatalogMgr.isInternalCatalog;
 
 public class MaterializedViewAnalyzer {
     private static final Logger LOG = LogManager.getLogger(MaterializedViewAnalyzer.class);
@@ -146,15 +144,7 @@ public class MaterializedViewAnalyzer {
                         "Only supports creating materialized views based on the external table " +
                                 "which created by catalog");
             }
-            Database database = GlobalStateMgr.getCurrentState().getMetadataMgr().getDb(tableNameInfo.getCatalog(),
-                    tableNameInfo.getDb());
-            if (isInternalCatalog(tableNameInfo.getCatalog())) {
-                baseTableInfos.add(new BaseTableInfo(database.getId(), database.getFullName(),
-                        table.getId()));
-            } else {
-                baseTableInfos.add(new BaseTableInfo(tableNameInfo.getCatalog(),
-                        tableNameInfo.getDb(), table.getTableIdentifier()));
-            }
+            baseTableInfos.add(BaseTableInfo.fromTableName(tableNameInfo, table));
         });
         return baseTableInfos;
     }
@@ -181,6 +171,23 @@ public class MaterializedViewAnalyzer {
         }
     }
 
+<<<<<<< HEAD
+=======
+    private static void processViews(QueryStatement queryStatement, List<BaseTableInfo> baseTableInfos) {
+        List<ViewRelation> viewRelations = AnalyzerUtils.collectViewRelations(queryStatement);
+        if (viewRelations.isEmpty()) {
+            return;
+        }
+        Set<ViewRelation> viewRelationSet = Sets.newHashSet(viewRelations);
+        for (ViewRelation viewRelation : viewRelationSet) {
+            // base tables of view
+            processBaseTables(viewRelation.getQueryStatement(), baseTableInfos);
+
+            // view itself is considered as base-table
+            baseTableInfos.add(BaseTableInfo.fromTableName(viewRelation.getName(), viewRelation.getView()));
+        }
+    }
+>>>>>>> 4abb94a42e ([BugFix] fix swap mv and alter view of mv (#27053))
 
     static class MaterializedViewAnalyzerVisitor extends AstVisitor<Void, ConnectContext> {
 
