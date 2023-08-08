@@ -2304,6 +2304,12 @@ public class Coordinator {
      * @return Whether using the strategy of assigning scanRanges to each driver sequence.
      */
     private <T> boolean enableAssignScanRangesPerDriverSeq(List<T> scanRanges, int pipelineDop) {
+        boolean enableAssignScangesPerPipeline =
+                connectContext != null && connectContext.getSessionVariable().isEnableAssignScangesPerPipeline();
+        if (!enableAssignScangesPerPipeline) {
+            return false;
+        }
+
         boolean enableTabletInternalParallel =
                 connectContext != null && connectContext.getSessionVariable().isEnableTabletInternalParallel();
         return !enableTabletInternalParallel || scanRanges.size() > pipelineDop / 2;
