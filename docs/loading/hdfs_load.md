@@ -1,32 +1,32 @@
-# Load data from HDFS
+# HDFSからデータをロードする
 
 import InsertPrivNote from '../assets/commonMarkdown/insertPrivNote.md'
 
-StarRocks supports using the [Broker Load](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md) to load large amounts of data from HDFS into StarRocks.
+StarRocksは、[Broker Load](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md)を使用してHDFSから大量のデータをStarRocksにロードすることができます。
 
-Broker Load runs in asynchronous loading mode. After you submit a load job, StarRocks asynchronously runs the job. You can use `SELECT * FROM information_schema.loads` to query the job result. This feature is supported from v3.1 onwards. For more information, see the "[View a load job](#view-a-load-job)" section of this topic.
+Broker Loadは非同期ロードモードで実行されます。ロードジョブを送信すると、StarRocksは非同期でジョブを実行します。ジョブの結果をクエリするには、`SELECT * FROM information_schema.loads`を使用できます。この機能はv3.1以降でサポートされています。詳細については、このトピックの"[ロードジョブの表示](#view-a-load-job)"セクションを参照してください。
 
-Broker Load ensures the transactional atomicity of each load job that is run to load multiple data files, which means that the loading of multiple data files in one load job must all succeed or fail. It never happens that the loading of some data files succeeds while the loading of the other files fails.
+Broker Loadは、複数のデータファイルをロードするために実行される各ロードジョブのトランザクション的な原子性を保証します。つまり、1つのロードジョブで複数のデータファイルのロードがすべて成功するか、すべて失敗するかのいずれかです。一部のデータファイルのロードが成功し、他のファイルのロードが失敗することはありません。
 
-Additionally, Broker Load supports data transformation at data loading and supports data changes made by UPSERT and DELETE operations during data loading. For more information, see [Transform data at loading](../loading/Etl_in_loading.md) and [Change data through loading](../loading/Load_to_Primary_Key_tables.md).
+さらに、Broker Loadはデータロード時のデータ変換をサポートし、データロード中にUPSERTおよびDELETE操作によるデータ変更をサポートします。詳細については、[ロード時のデータ変換](../loading/Etl_in_loading.md)および[ロードを介したデータ変更](../loading/Load_to_Primary_Key_tables.md)を参照してください。
 
-<InsetPrivNote />
+<InsertPrivNote />
 
-## Background information
+## 背景情報
 
-In v2.4 and earlier, StarRocks depends on brokers to set up connections between your StarRocks cluster and your external storage system when it runs a Broker Load job. Therefore, you need to input `WITH BROKER "<broker_name>"` to specify the broker you want to use in the load statement. This is called "broker-based loading." A broker is an independent, stateless service that is integrated with a file-system interface. With brokers, StarRocks can access and read data files that are stored in your external storage system, and can use its own computing resources to pre-process and load the data of these data files.
+v2.4以前では、StarRocksはBroker Loadジョブを実行する際に、ブローカーを使用してStarRocksクラスタと外部ストレージシステムの間の接続を設定していました。そのため、ロードステートメントで使用するブローカーを指定するために`WITH BROKER "<broker_name>"`を入力する必要があります。これを「ブローカーベースのロード」と呼びます。ブローカーは、ファイルシステムインターフェースと統合された独立したステートレスサービスです。ブローカーを使用することで、StarRocksは外部ストレージシステムに保存されているデータファイルにアクセスして読み取ることができ、これらのデータファイルのデータを事前処理してロードするために独自の計算リソースを使用することができます。
 
-From v2.5 onwards, StarRocks no longer depends on brokers to set up connections between your StarRocks cluster and your external storage system when it runs a Broker Load job. Therefore, you no longer need to specify a broker in the load statement, but you still need to retain the `WITH BROKER` keyword. This is called "broker-free loading."
+v2.5以降、StarRocksはBroker Loadジョブを実行する際に、ブローカーを使用してStarRocksクラスタと外部ストレージシステムの間の接続を設定する必要がありません。そのため、ロードステートメントでブローカーを指定する必要はありませんが、`WITH BROKER`キーワードは保持する必要があります。これを「ブローカーフリーロード」と呼びます。
 
-When your data is stored in HDFS, you may encounter situations where broker-free loading does not work. This can happen when your data is stored across multiple HDFS clusters or when you have configured multiple Kerberos users. In these situations, you can resort to using broker-based loading instead. To do this successfully, make sure that at least one independent broker group is deployed. For information about how to specify authentication configuration and HA configuration in these situations, see [HDFS](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md#hdfs).
+HDFSにデータが保存されている場合、ブローカーフリーローディングが機能しない場合があります。これは、データが複数のHDFSクラスタにまたがって保存されている場合や、複数のKerberosユーザが設定されている場合に発生する可能性があります。このような場合、代わりにブローカーベースのローディングを使用することができます。これを成功させるためには、少なくとも1つの独立したブローカーグループが展開されていることを確認してください。これらの状況で認証構成とHA構成を指定する方法については、[HDFS](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md#hdfs)を参照してください。
 
-> **NOTE**
+> **注意**
 >
-> You can use the [SHOW BROKER](../sql-reference/sql-statements/Administration/SHOW%20BROKER.md) statement to check for brokers that are deployed in your StarRocks cluster. If no brokers are deployed, you can deploy brokers by following the instructions provided in [Deploy a broker](../deployment/deploy_broker.md).
+> [SHOW BROKER](../sql-reference/sql-statements/Administration/SHOW%20BROKER.md)ステートメントを使用して、StarRocksクラスタに展開されているブローカーを確認できます。ブローカーが展開されていない場合は、[ブローカーの展開](../deployment/deploy_broker.md)に記載されている手順に従ってブローカーを展開できます。
 
-## Supported data file formats
+## サポートされているデータファイル形式
 
-Broker Load supports the following data file formats:
+ブローカーロードは、次のデータファイル形式をサポートしています。
 
 - CSV
 
@@ -34,76 +34,76 @@ Broker Load supports the following data file formats:
 
 - ORC
 
-> **NOTE**
+> **注意**
 >
-> For CSV data, take note of the following points:
+> CSVデータの場合、次の点に注意してください：
 >
-> - You can use a UTF-8 string, such as a comma (,), tab, or pipe (|), whose length does not exceed 50 bytes as a text delimiter.
-> - Null values are denoted by using `\N`. For example, a data file consists of three columns, and a record from that data file holds data in the first and third columns but no data in the second column. In this situation, you need to use `\N` in the second column to denote a null value. This means the record must be compiled as `a,\N,b` instead of `a,,b`. `a,,b` denotes that the second column of the record holds an empty string.
+> - テキスト区切り記号として、50バイトを超えないUTF-8文字列（例：カンマ（,）、タブ、パイプ（|））を使用できます。
+> - Null値は`\N`を使用して示されます。たとえば、データファイルは3つの列から構成されており、そのデータファイルのレコードは最初と3番目の列にデータを保持していますが、2番目の列にはデータがありません。この場合、2番目の列には`\N`を使用してnull値を示す必要があります。つまり、レコードは`a,\N,b`としてコンパイルする必要があります。`a,,b`は、レコードの2番目の列に空の文字列があることを示します。
 
-## How it works
+## 動作原理
 
-After you submit a load job to an FE, the FE generates a query plan, splits the query plan into portions based on the number of available BEs and the size of the data file you want to load, and then assigns each portion of the query plan to an available BE. During the load, each involved BE pulls the data of the data file from your external storage system, pre-processes the data, and then loads the data into your StarRocks cluster. After all BEs finish their portions of the query plan, the FE determines whether the load job is successful.
+FEにロードジョブを送信すると、FEはクエリプランを生成し、利用可能なBEの数とロードするデータファイルのサイズに基づいてクエリプランを分割し、それぞれのクエリプランの部分を利用可能なBEに割り当てます。ロード中、関連する各BEは外部ストレージシステムからデータファイルのデータを取得し、データを前処理してStarRocksクラスタにデータをロードします。すべてのBEがクエリプランの各部分を完了した後、FEはロードジョブが成功したかどうかを判断します。
 
-The following figure shows the workflow of a Broker Load job.
+以下の図は、Broker Load ジョブのワークフローを示しています。
 
-![Workflow of Broker Load](../assets/broker_load_how-to-work_en.png)
+![Broker Load のワークフロー](../assets/broker_load_how-to-work_en.png)
 
-## Prepare data examples
+## データの準備例
 
-1. Log in to your HDFS cluster and create two CSV-formatted data files, `file1.csv` and `file2.csv`, in a specified path (for example, `/user/starrocks/`). Both files consist of three columns, which represent user ID, user name, and user score in sequence.
+1. HDFS クラスタにログインし、指定されたパス（例：`/user/starrocks/`）に、`file1.csv` と `file2.csv` の 2 つの CSV 形式のデータファイルを作成します。両ファイルは、ユーザー ID、ユーザー名、ユーザースコアの 3 つの列で構成されています。
 
-   - `file1.csv`
+- `file1.csv`
 
-     ```Plain
-     1,Lily,21
-     2,Rose,22
-     3,Alice,23
-     4,Julia,24
-     ```
+```Plain
+1,Lily,21
+2,Rose,22
+3,Alice,23
+4,Julia,24
+```
 
-   - `file2.csv`
+- `file2.csv`
 
-     ```Plain
-     5,Tony,25
-     6,Adam,26
-     7,Allen,27
-     8,Jacky,28
-     ```
+```Plain
+5,Tony,25
+6,Adam,26
+7,Allen,27
+8,Jacky,28
+```
 
-2. Log in to your StarRocks database (for example, `test_db`) and create two Primary Key tables, `table1` and `table2`. Both tables consist of three columns: `id`, `name`, and `score`, of which `id` is the primary key.
+2. StarRocks データベース（例：`test_db`）にログインし、2 つのプライマリキー テーブル `table1` と `table2` を作成します。両テーブルは、`id`、`name`、`score` の 3 つの列で構成されており、`id` がプライマリキーです。
 
-   ```SQL
-   CREATE TABLE `table1`
-      (
-          `id` int(11) NOT NULL COMMENT "user ID",
-          `name` varchar(65533) NULL DEFAULT "" COMMENT "user name",
-          `score` int(11) NOT NULL DEFAULT "0" COMMENT "user score"
-      )
-          ENGINE=OLAP
-          PRIMARY KEY(`id`)
-          DISTRIBUTED BY HASH(`id`);
-             
-   CREATE TABLE `table2`
-      (
-          `id` int(11) NOT NULL COMMENT "用户 ID",
-          `name` varchar(65533) NULL DEFAULT "" COMMENT "user name",
-          `score` int(11) NOT NULL DEFAULT "0" COMMENT "user score"
-      )
-          ENGINE=OLAP
-          PRIMARY KEY(`id`)
-          DISTRIBUTED BY HASH(`id`);
-   ```
+```SQL
+CREATE TABLE `table1`
+(
+`id` int(11) NOT NULL COMMENT "user ID",
+`name` varchar(65533) NULL DEFAULT "" COMMENT "user name",
+`score` int(11) NOT NULL DEFAULT "0" COMMENT "user score"
+)
+ENGINE=OLAP
+PRIMARY KEY(`id`)
+DISTRIBUTED BY HASH(`id`);
 
-## Create a load job
+CREATE TABLE `table2`
+(
+`id` int(11) NOT NULL COMMENT "用户 ID",
+`name` varchar(65533) NULL DEFAULT "" COMMENT "user name",
+`score` int(11) NOT NULL DEFAULT "0" COMMENT "user score"
+)
+ENGINE=OLAP
+PRIMARY KEY(`id`)
+DISTRIBUTED BY HASH(`id`);
+```
 
-Note that the following examples use the CSV format and the simple authentication method. For information about how to load data in other formats, how to specify HA configurations, and about the authentication parameters that you need to configure when using the Kerberos authentication method, see [BROKER LOAD](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md).
+## ロードジョブの作成
 
-### Load a single data file into a single table
+以下の例では、CSV 形式とシンプルな認証方法を使用しています。他の形式でデータをロードする方法、HA 構成を指定する方法、および Kerberos 認証方法を使用する場合に設定する必要のある認証パラメータについては、[BROKER LOAD](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md) を参照してください。
 
-#### Example
+### 単一のデータファイルを単一のテーブルにロードする
 
-Execute the following statement to load the data of `file1.csv` into `table1`:
+#### 例
+
+次のステートメントを実行して、`file1.csv` のデータを `table1` にロードします。
 
 ```SQL
 LOAD LABEL test_db.label_brokerload_singlefile_singletable
@@ -124,11 +124,11 @@ PROPERTIES
 );
 ```
 
-#### Query data
+#### データのクエリ
 
-After you submit the load job, you can use `SELECT * FROM information_schema.loads` to view the result of the load job. This feature is supported from v3.1 onwards. For more information, see the "[View a load job](#view-a-load-job)" section of this topic.
+ロードジョブを送信した後、`SELECT * FROM information_schema.loads` を使用してロードジョブの結果を表示できます。この機能は v3.1 以降でサポートされています。詳細については、このトピックの "[ロードジョブの表示](#view-a-load-job)" セクションを参照してください。
 
-After you confirm that the load job is successful, you can use [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) to query the data of `table1`:
+ロードジョブが成功したことを確認した後、[SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) を使用して `table1` のデータをクエリできます。
 
 ```SQL
 SELECT * FROM table1;
@@ -143,11 +143,11 @@ SELECT * FROM table1;
 4 rows in set (0.01 sec)
 ```
 
-### Load multiple data files into a single table
+### 複数のデータファイルを単一のテーブルにロードする
 
-#### Example
+#### 例
 
-Execute the following statement to load the data of all data files (`file1.csv` and `file2.csv`) stored in the `/user/starrocks/` path of your HDFS cluster into `table1`:
+次のステートメントを実行して、HDFS クラスタの `/user/starrocks/` パスに格納されているすべてのデータファイル（`file1.csv` および `file2.csv`）を `table1` にロードします。
 
 ```SQL
 LOAD LABEL test_db.label_brokerload_allfile_singletable
@@ -168,11 +168,11 @@ PROPERTIES
 );
 ```
 
-#### Query data
+#### データのクエリ
 
-After you submit the load job, you can use `SELECT * FROM information_schema.loads` to view the result of the load job. This feature is supported from v3.1 onwards. For more information, see the "[View a load job](#view-a-load-job)" section of this topic.
+ロードジョブを送信した後、`SELECT * FROM information_schema.loads` を使用してロードジョブの結果を表示できます。この機能はv3.1以降でサポートされています。詳細については、このトピックの"[ロードジョブの表示](#view-a-load-job)"セクションを参照してください。
 
-After you confirm that the load job is successful, you can use [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) to query the data of `table1`:
+ロードジョブが成功したことを確認した後、`table1` のデータをクエリするために [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) を使用できます:
 
 ```SQL
 SELECT * FROM table1;
@@ -191,11 +191,11 @@ SELECT * FROM table1;
 4 rows in set (0.01 sec)
 ```
 
-### Load multiple data files into multiple tables
+### 複数のデータファイルを複数のテーブルにロードする
 
-#### Example
+#### 例
 
-Execute the following statement to load the data of `file1.csv` and `file2.csv` into `table1` and `table2`, respectively:
+次のステートメントを実行して、`file1.csv` と `file2.csv` のデータをそれぞれ `table1` と `table2` にロードします:
 
 ```SQL
 LOAD LABEL test_db.label_brokerload_multiplefile_multipletable
@@ -221,47 +221,47 @@ PROPERTIES
 );
 ```
 
-#### Query data
+#### データのクエリ
 
-After you submit the load job, you can use `SELECT * FROM information_schema.loads` to view the result of the load job. This feature is supported from v3.1 onwards. For more information, see the "[View a load job](#view-a-load-job)" section of this topic.
+ロードジョブを送信した後、`SELECT * FROM information_schema.loads` を使用してロードジョブの結果を表示できます。この機能はv3.1以降でサポートされています。詳細については、このトピックの"[ロードジョブの表示](#view-a-load-job)"セクションを参照してください。
 
-After you confirm that the load job is successful, you can use [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) to query the data of `table1` and `table2`:
+ロードジョブが成功したことを確認した後、`table1` と `table2` のデータをクエリするために [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) を使用できます:
 
-1. Query `table1`:
+1. `table1` のクエリ:
 
-   ```SQL
-   SELECT * FROM table1;
-   +------+-------+-------+
-   | id   | name  | score |
-   +------+-------+-------+
-   |    1 | Lily  |    21 |
-   |    2 | Rose  |    22 |
-   |    3 | Alice |    23 |
-   |    4 | Julia |    24 |
-   +------+-------+-------+
-   4 rows in set (0.01 sec)
-   ```
+```SQL
+SELECT * FROM table1;
++------+-------+-------+
+| id   | name  | score |
++------+-------+-------+
+|    1 | Lily  |    21 |
+|    2 | Rose  |    22 |
+|    3 | Alice |    23 |
+|    4 | Julia |    24 |
++------+-------+-------+
+4 rows in set (0.01 sec)
+```
 
-2. Query `table2`:
+2. `table2` のクエリ:
 
-   ```SQL
-   SELECT * FROM table2;
-   +------+-------+-------+
-   | id   | name  | score |
-   +------+-------+-------+
-   |    5 | Tony  |    25 |
-   |    6 | Adam  |    26 |
-   |    7 | Allen |    27 |
-   |    8 | Jacky |    28 |
-   +------+-------+-------+
-   4 rows in set (0.01 sec)
-   ```
+```SQL
+SELECT * FROM table2;
++------+-------+-------+
+| id   | name  | score |
++------+-------+-------+
+|    5 | Tony  |    25 |
+|    6 | Adam  |    26 |
+|    7 | Allen |    27 |
+|    8 | Jacky |    28 |
++------+-------+-------+
+4 rows in set (0.01 sec)
+```
 
-## View a load job
+## ロードジョブの表示
 
-Use the [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) statement to query the results of one or more load jobs from the `loads` table in the `information_schema` database. This feature is supported from v3.1 onwards.
+`information_schema` データベースの `loads` テーブルから、1つ以上のロードジョブの結果をクエリするために [SELECT](../sql-reference/sql-statements/data-manipulation/SELECT.md) ステートメントを使用します。この機能はv3.1以降でサポートされています。
 
-Example 1: Query the results of load jobs executed on the `test_db` database. In the query statement, specify that a maximum of two results can be returned and the return results must be sorted by creation time (`CREATE_TIME`) in descending order.
+例1: `test_db` データベースで実行されたロードジョブの結果をクエリします。クエリステートメントでは、最大2つの結果を返すように指定し、返される結果は作成時刻 (`CREATE_TIME`) の降順でソートされるように指定します。
 
 ```SQL
 SELECT * FROM information_schema.loads
@@ -270,7 +270,7 @@ ORDER BY create_time DESC
 LIMIT 2\G
 ```
 
-The following results are returned:
+以下の結果が返されます:
 
 ```SQL
 *************************** 1. row ***************************
@@ -323,14 +323,14 @@ REJECTED_RECORD_PATH: NULL
 REJECTED_RECORD_PATH: 172.26.95.92:/home/disk1/sr/be/storage/rejected_record/test_db/label_brokerload_unqualifiedtest_0728/6/404a20b1e4db4d27_8aa9af1e8d6d8bdc
 ```
 
-Example 2: Query the result of the load job (whose label is `label_brokerload_unqualifiedtest_82`) executed on the `test_db` database:
+例2: `test_db` データベースで実行されたロードジョブの結果 (ラベルが `label_brokerload_unqualifiedtest_82` のもの) をクエリします:
 
 ```SQL
 SELECT * FROM information_schema.loads
 WHERE database_name = 'test_db' and label = 'label_brokerload_unqualifiedtest_82'\G
 ```
 
-The following result is returned:
+以下の結果が返されます：
 
 ```SQL
 *************************** 1. row ***************************
@@ -359,13 +359,13 @@ The following result is returned:
 REJECTED_RECORD_PATH: 172.26.95.92:/home/disk1/sr/be/storage/rejected_record/test_db/label_brokerload_unqualifiedtest_0728/6/404a20b1e4db4d27_8aa9af1e8d6d8bdc
 ```
 
-For information about the fields in the return results, see [Information Schema > loads](../administration/information_schema.md#loads).
+返される結果のフィールドに関する情報については、[Information Schema > loads](../administration/information_schema.md#loads)を参照してください。
 
-## Cancel a load job
+## ロードジョブのキャンセル
 
-When a load job is not in the **CANCELLED** or **FINISHED** stage, you can use the [CANCEL LOAD](../sql-reference/sql-statements/data-manipulation/CANCEL%20LOAD.md) statement to cancel the job.
+ロードジョブが**CANCELLED**または**FINISHED**のステージにない場合、[CANCEL LOAD](../sql-reference/sql-statements/data-manipulation/CANCEL%20LOAD.md)ステートメントを使用してジョブをキャンセルすることができます。
 
-For example, you can execute the following statement to cancel a load job, whose label is `label1`, in the database `test_db`:
+たとえば、データベース`test_db`内のラベルが`label1`であるロードジョブをキャンセルするには、次のステートメントを実行します：
 
 ```SQL
 CANCEL LOAD
@@ -373,30 +373,30 @@ FROM test_db
 WHERE LABEL = "label1";
 ```
 
-## Job splitting and concurrent running
+## ジョブの分割と並行実行
 
-A Broker Load job can be split into one or more tasks that concurrently run. The tasks within a load job are run within a single transaction. They must all succeed or fail. StarRocks splits each load job based on how you declare `data_desc` in the `LOAD` statement:
+ブローカーロードジョブは、複数のタスクに分割されて並行して実行されることがあります。ロードジョブ内のタスクは、単一のトランザクション内で実行されます。すべてのタスクは成功するか失敗するかのいずれかです。StarRocksは、`LOAD`ステートメントで`data_desc`を宣言する方法に基づいて、各ロードジョブを分割します：
 
-- If you declare multiple `data_desc` parameters, each of which specifies a distinct table, a task is generated to load the data of each table.
+- 異なるテーブルを指定する各`data_desc`パラメータを宣言する場合、各テーブルのデータをロードするためのタスクが生成されます。
 
-- If you declare multiple `data_desc` parameters, each of which specifies a distinct partition for the same table, a task is generated to load the data of each partition.
+- 同じテーブルの異なるパーティションを指定する各`data_desc`パラメータを宣言する場合、各パーティションのデータをロードするためのタスクが生成されます。
 
-Additionally, each task can be further split into one or more instances, which are evenly distributed to and concurrently run on the BEs of your StarRocks cluster. StarRocks splits each task based on the following [FE configurations](../administration/Configuration.md#fe-configuration-items):
+さらに、各タスクは1つ以上のインスタンスにさらに分割され、これらはStarRocksクラスタのBEに均等に分散されて並行して実行されます。StarRocksは、次の[FEの設定](../administration/Configuration.md#fe-configuration-items)に基づいて各タスクを分割します：
 
-- `min_bytes_per_broker_scanner`: the minimum amount of data processed by each instance. The default amount is 64 MB.
+- `min_bytes_per_broker_scanner`：各インスタンスが処理する最小データ量。デフォルトの量は64 MBです。
 
-- `load_parallel_instance_num`: the number of concurrent instances allowed in each load job on an individual BE. The default number is 1.
-  
-  You can use the following formula to calculate the number of instances in an individual task:
+- `load_parallel_instance_num`：個々のBE上の各ロードジョブで許可される並行インスタンスの数。デフォルトの数は1です。
 
-  **Number of instances in an individual task = min(Amount of data to be loaded by an individual task/`min_bytes_per_broker_scanner`,`load_parallel_instance_num` x Number of BEs)**
+  個々のタスク内のインスタンス数を計算するために、次の式を使用できます：
 
-In most cases, only one `data_desc` is declared for each load job, each load job is split into only one task, and the task is split into the same number of instances as the number of BEs.
+  **個々のタスク内のインスタンス数 = 個々のタスクがロードするデータ量/`min_bytes_per_broker_scanner`、`load_parallel_instance_num` x BEの数**
 
-## Related configuration items
+ほとんどの場合、各ロードジョブには1つの`data_desc`が宣言され、各ロードジョブは1つのタスクにのみ分割され、タスクはBEの数と同じ数のインスタンスに分割されます。
 
-The [FE configuration item](../administration/Configuration.md#fe-configuration-items) `max_broker_load_job_concurrency` specifies the maximum number of tasks that can be concurrently run for Broker Load within your StarRocks cluster.
+## 関連する設定項目
 
-In StarRocks v2.4 and earlier, if the total number of tasks generated for Broker Load jobs that are submitted within a specific period of time exceeds the maximum number, excessive jobs are queued and scheduled based on their submission time.
+[FE configuration item](../administration/Configuration.md#fe-configuration-items) `max_broker_load_job_concurrency` は、StarRocksクラスタ内でBroker Loadのために同時に実行できるタスクの最大数を指定します。
 
-Since StarRocks v2.5,  if the total number of tasks generated for Broker Load jobs that are submitted within a specific period of time exceeds the maximum number, excessive jobs are queued and scheduled based on their priorities. You can specify a priority for a job by using the `priority` parameter at job creation. See [BROKER LOAD](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md#opt_properties). You can also use [ALTER LOAD](../sql-reference/sql-statements/data-manipulation/ALTER%20LOAD.md) to modify the priority of an existing job that is in the **QUEUEING** or **LOADING** state.
+StarRocks v2.4以前では、特定の時間内に提出されたBroker Loadジョブの生成されたタスクの総数が最大数を超える場合、余剰なジョブはキューに入れられ、提出時刻に基づいてスケジュールされます。
+
+StarRocks v2.5以降では、特定の時間内に提出されたBroker Loadジョブの生成されたタスクの総数が最大数を超える場合、余剰なジョブは優先度に基づいてキューに入れられ、スケジュールされます。ジョブの作成時に `priority` パラメータを使用してジョブの優先度を指定することができます。詳細は [BROKER LOAD](../sql-reference/sql-statements/data-manipulation/BROKER%20LOAD.md#opt_properties) を参照してください。また、**QUEUEING** または **LOADING** 状態にある既存のジョブの優先度を変更するために [ALTER LOAD](../sql-reference/sql-statements/data-manipulation/ALTER%20LOAD.md) を使用することもできます。
